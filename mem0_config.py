@@ -1,40 +1,44 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from mem0 import Memory
 
-# Option 1: default config (OpenAI + local Qdrant)
-# Requires OPENAI_API_KEY in env
-MEM0 = Memory()
+load_dotenv()
 
-# Option 2 (later): if you want to fully customize (Ollama/HF/etc),
-# you can replace the above with:
-#
-# from mem0 import Memory
-#
-# config = {
-#     "vector_store": {
-#         "provider": "qdrant",
-#         "config": {
-#             "collection_name": "clara_memories",
-#             "host": "localhost",
-#             "port": 6333,
-#             "embedding_model_dims": 768,
-#         },
-#     },
-#     "llm": {
-#         "provider": "ollama",
-#         "config": {
-#             "model": "llama3.1:latest",
-#             "temperature": 0,
-#         },
-#     },
-#     "embedder": {
-#         "provider": "ollama",
-#         "config": {
-#             "model": "nomic-embed-text:latest",
-#         },
-#     },
-# }
-#
-# MEM0 = Memory.from_config(config)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+
+# Store mem0 data in a local directory
+DATA_DIR = Path(__file__).parent / "mem0_data"
+DATA_DIR.mkdir(exist_ok=True)
+
+config = {
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {
+            "collection_name": "clara_memories",
+            "path": str(DATA_DIR),  # Local file-based persistence
+        },
+    },
+    "llm": {
+        "provider": "openai",
+        "config": {
+            "model": OPENROUTER_MODEL,
+            "api_key": OPENROUTER_API_KEY,
+            "openai_base_url": "https://openrouter.ai/api/v1",
+            "temperature": 0,
+        },
+    },
+    "embedder": {
+        "provider": "openai",
+        "config": {
+            "model": "openai/text-embedding-3-small",
+            "api_key": OPENROUTER_API_KEY,
+            "openai_base_url": "https://openrouter.ai/api/v1",
+        },
+    },
+}
+
+MEM0 = Memory.from_config(config)

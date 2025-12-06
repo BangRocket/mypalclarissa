@@ -39,6 +39,7 @@ class MemoryManager:
                 user_mems,
                 proj_mems,
                 sess.context_snapshot,
+                sess.session_summary,
                 recent_msgs,
                 user_message,
             )
@@ -90,7 +91,13 @@ class MemoryManager:
         previous_session_id: Optional[str],
     ) -> Session:
         snapshot = None
+        previous_summary = None
+
         if previous_session_id:
+            # Get previous session
+            prev_session = db.query(Session).filter_by(id=previous_session_id).first()
+
+            # Get messages for carryover
             carry = (
                 db.query(Message)
                 .filter_by(session_id=previous_session_id)
@@ -102,16 +109,50 @@ class MemoryManager:
             snapshot = "\n".join(
                 f"{m.role.upper()}: {m.content}" for m in carry)
 
+            # Generate summary of the previous session
+            all_msgs = (
+                db.query(Message)
+                .filter_by(session_id=previous_session_id)
+                .order_by(Message.created_at.asc())
+                .all()
+            )
+            if all_msgs:
+                previous_summary = self._summarize_session(all_msgs)
+                # Store summary in the previous session
+                if prev_session:
+                    prev_session.session_summary = previous_summary
+                    db.commit()
+
         new = Session(
             user_id=user_id,
             project_id=project_id,
             previous_session_id=previous_session_id,
             context_snapshot=snapshot,
+            session_summary=previous_summary,  # Store previous session's summary
         )
         db.add(new)
         db.commit()
         db.refresh(new)
         return new
+
+    def _summarize_session(self, messages: List[Message]) -> str:
+        """Generate a concise summary of the session using the LLM."""
+        conversation = "\n".join(
+            f"{m.role.upper()}: {m.content}" for m in messages
+        )
+
+        summary_prompt = [
+            {
+                "role": "system",
+                "content": "Summarize this conversation in 2-3 sentences. Focus on key topics discussed, decisions made, and any important context for future conversations.",
+            },
+            {
+                "role": "user",
+                "content": conversation,
+            },
+        ]
+
+        return self.llm(summary_prompt)
 
     def _get_recent_messages(self, db: OrmSession, session_id: str) -> List[Message]:
         msgs = (
@@ -148,12 +189,13 @@ class MemoryManager:
         """
         user_res = MEM0.search(
             user_message,
-            filters={"user_id": user_id},
+            user_id=user_id,
         )
 
         proj_res = MEM0.search(
             user_message,
-            filters={"user_id": user_id, "project_id": project_id},
+            user_id=user_id,
+            filters={"project_id": project_id},
         )
 
         user_mems = [r["memory"] for r in user_res.get("results", [])]
@@ -193,6 +235,7 @@ class MemoryManager:
         user_mems: List[str],
         proj_mems: List[str],
         snapshot: Optional[str],
+        session_summary: Optional[str],
         recent_msgs: List[Message],
         user_message: str,
     ) -> List[Dict[str, str]]:
@@ -202,18 +245,21 @@ You are Mara, an AI assistant.
 Use:
 - USER MEMORY for stable facts and preferences about the user.
 - PROJECT MEMORY for context about this project.
-- SESSION CONTEXT for what we were doing in previous sessions.
+- PREVIOUS SESSION SUMMARY for a brief overview of what was discussed before.
+- SESSION CONTEXT for recent messages from the previous session.
 If newer information contradicts older, prefer the newest.
         """.strip()
 
         user_block = "\n".join(f"- {m}" for m in user_mems) or "(none)"
         proj_block = "\n".join(f"- {m}" for m in proj_mems) or "(none)"
+        summary_block = session_summary or "(none)"
         session_block = snapshot or "(none)"
 
         messages: List[Dict[str, str]] = [
             {"role": "system", "content": system_base},
             {"role": "system", "content": f"USER MEMORY:\n{user_block}"},
             {"role": "system", "content": f"PROJECT MEMORY:\n{proj_block}"},
+            {"role": "system", "content": f"PREVIOUS SESSION SUMMARY:\n{summary_block}"},
             {"role": "system", "content": f"SESSION CONTEXT:\n{session_block}"},
         ]
 

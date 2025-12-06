@@ -41,6 +41,7 @@ class Session(Base):
         DateTime, default=datetime.utcnow, nullable=False)
     previous_session_id = Column(String, nullable=True)
     context_snapshot = Column(Text, nullable=True)
+    session_summary = Column(Text, nullable=True)  # LLM-generated summary
 
     project = relationship("Project", back_populates="sessions")
     messages = relationship("Message", back_populates="session")

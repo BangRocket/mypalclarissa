@@ -48,8 +48,7 @@ def ensure_project(name: str) -> str:
 def chat_fn(message: str, history, project_name: str):
     project_id = ensure_project(project_name or DEFAULT_PROJECT)
     reply = mm.handle_message(USER_ID, project_id, message)
-    history = history + [[message, reply]]
-    return reply, history
+    return reply
 
 
 def main():
@@ -66,7 +65,8 @@ def main():
         gr.ChatInterface(
             fn=lambda msg, hist: chat_fn(msg, hist, project_name.value),
             title="Clara",
-            textbox="Type your message here...",
+            textbox=gr.Textbox(placeholder="Type your message here..."),
+            type="messages",
         )
 
     demo.launch()
