@@ -2,6 +2,7 @@ import type {
   unstable_RemoteThreadListAdapter as RemoteThreadListAdapter,
   ThreadHistoryAdapter,
 } from "@assistant-ui/react";
+import { createAssistantStream } from "assistant-stream";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -33,7 +34,8 @@ export const threadListAdapter: RemoteThreadListAdapter = {
   /**
    * Initialize a new thread - called when creating a new thread.
    */
-  async initialize(_threadId: string) {
+  async initialize(threadId: string) {
+    console.log("[threads] initialize() called with threadId:", threadId);
     try {
       const response = await fetch(`${BACKEND_URL}/api/threads`, {
         method: "POST",
@@ -140,15 +142,54 @@ export const threadListAdapter: RemoteThreadListAdapter = {
     }
   },
 
-  // generateTitle is intentionally omitted - we set titles manually via rename
-  // when messages are stored in the backend
+  /**
+   * Generate a title for the thread based on messages.
+   * Returns an AssistantStream with the generated title.
+   */
+  generateTitle(remoteId: string, messages: readonly { role: string; content: unknown }[]) {
+    // Find the first user message to use as title
+    const firstUserMessage = messages.find((m) => m.role === "user");
+
+    let titleText = "New Chat";
+    if (firstUserMessage) {
+      if (typeof firstUserMessage.content === "string") {
+        titleText = firstUserMessage.content;
+      } else if (Array.isArray(firstUserMessage.content)) {
+        const textPart = (firstUserMessage.content as ContentPart[]).find(
+          (p) => p.type === "text"
+        );
+        if (textPart?.text) {
+          titleText = textPart.text;
+        }
+      }
+    }
+
+    // Truncate to reasonable length
+    const title = titleText.slice(0, 50) + (titleText.length > 50 ? "..." : "");
+
+    // Save to backend
+    this.rename(remoteId, title);
+
+    // Return an AssistantStream with the title
+    return createAssistantStream((controller) => {
+      controller.appendText(title);
+      controller.close();
+    });
+  },
 };
 
 /**
  * Create a history adapter for a specific thread.
  */
 export function createHistoryAdapter(remoteId: string | undefined): ThreadHistoryAdapter {
-  return {
+  const adapter: ThreadHistoryAdapter = {
+    /**
+     * Required for load() to be called - returns self with same interface.
+     */
+    withFormat() {
+      return adapter;
+    },
+
     /**
      * Load messages for this thread.
      */
@@ -160,13 +201,13 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
       try {
         const response = await fetch(`${BACKEND_URL}/api/threads/${remoteId}/messages`);
         if (!response.ok) {
-          console.error("[threads] Failed to load messages:", response.status);
+          console.error("[history] Failed to load messages:", response.status);
           return { messages: [] };
         }
         const data = await response.json();
-        console.log("[threads] Loaded", data.messages.length, "messages for thread", remoteId);
+        console.log("[history] Loaded", data.messages.length, "messages for thread", remoteId);
 
-        // Convert to the expected format
+        // Convert to the expected format (simple format per docs)
         interface BackendMessage {
           id: string;
           role: string;
@@ -174,24 +215,37 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
           createdAt: string;
         }
 
-        const messages = data.messages.map((m: BackendMessage, index: number) => ({
+        // Filter out empty messages first
+        const validMessages = data.messages.filter((m: BackendMessage) => {
+          const text = m.content
+            .filter((p) => p.type === "text")
+            .map((p) => p.text || "")
+            .join("");
+          return text.length > 0;
+        });
+
+        if (validMessages.length === 0) {
+          return { messages: [] };
+        }
+
+        // Convert to MessageFormatRepository format expected by assistant-ui
+        // { headId: string, messages: [{ message: UIMessage, parentId: string | null }] }
+        const messages = validMessages.map((m: BackendMessage, index: number) => ({
           message: {
             id: m.id,
             role: m.role as "user" | "assistant",
-            content: m.content,
+            parts: m.content, // AI SDK UIMessage uses 'parts'
             createdAt: new Date(m.createdAt),
-            metadata: {},
-            status: { type: "complete" as const },
           },
-          parentId: index > 0 ? data.messages[index - 1].id : null,
+          parentId: index > 0 ? validMessages[index - 1].id : null,
         }));
 
-        return {
-          headId: messages.length > 0 ? messages[messages.length - 1].message.id : null,
-          messages,
-        };
+        const headId = validMessages[validMessages.length - 1].id;
+
+        console.log("[history] Returning", messages.length, "messages, headId:", headId);
+        return { headId, messages };
       } catch (error) {
-        console.error("[threads] Error loading messages:", error);
+        console.error("[history] Error loading messages:", error);
         return { messages: [] };
       }
     },
@@ -200,8 +254,9 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
      * Append a message to this thread.
      */
     async append(item) {
+      console.log("[history] append() called with remoteId:", remoteId, "item:", item);
       if (!remoteId) {
-        console.warn("[threads] Cannot append message - no remoteId");
+        console.warn("[history] Cannot append message - no remoteId");
         return;
       }
 
@@ -233,8 +288,10 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
           console.error("[threads] Failed to append message:", response.status);
         }
       } catch (error) {
-        console.error("[threads] Error appending message:", error);
+        console.error("[history] Error appending message:", error);
       }
     },
   };
+
+  return adapter;
 }

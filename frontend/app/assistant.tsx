@@ -29,6 +29,8 @@ function ThreadProvider({ children }: { children?: React.ReactNode }) {
   const threadListItem = useThreadListItem();
   const remoteId = threadListItem?.remoteId;
 
+  console.log("[ThreadProvider] threadListItem:", threadListItem, "remoteId:", remoteId);
+
   const history = useMemo(() => createHistoryAdapter(remoteId), [remoteId]);
   const adapters = useMemo(() => ({ history }), [history]);
 
