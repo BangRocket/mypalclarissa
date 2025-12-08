@@ -201,11 +201,9 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
       try {
         const response = await fetch(`${BACKEND_URL}/api/threads/${remoteId}/messages`);
         if (!response.ok) {
-          console.error("[history] Failed to load messages:", response.status);
           return { messages: [] };
         }
         const data = await response.json();
-        console.log("[history] Loaded", data.messages.length, "messages for thread", remoteId);
 
         // Convert to the expected format (simple format per docs)
         interface BackendMessage {
@@ -241,8 +239,6 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
         }));
 
         const headId = validMessages[validMessages.length - 1].id;
-
-        console.log("[history] Returning", messages.length, "messages, headId:", headId);
         return { headId, messages };
       } catch (error) {
         console.error("[history] Error loading messages:", error);
@@ -254,9 +250,7 @@ export function createHistoryAdapter(remoteId: string | undefined): ThreadHistor
      * Append a message to this thread.
      */
     async append(item) {
-      console.log("[history] append() called with remoteId:", remoteId, "item:", item);
       if (!remoteId) {
-        console.warn("[history] Cannot append message - no remoteId");
         return;
       }
 
