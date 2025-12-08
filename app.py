@@ -77,9 +77,9 @@ def main():
     .gradio-container {max-width: 900px !important;}
     """
 
-    with gr.Blocks(css=css, title="Mara", theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(css=css, title="Clara", theme=gr.themes.Soft()) as demo:
         with gr.Row():
-            gr.Markdown("## Mara")
+            gr.Markdown("## Clara")
             project_dropdown = gr.Dropdown(
                 choices=get_projects(),
                 value=DEFAULT_PROJECT,
@@ -99,7 +99,7 @@ def main():
                 type="tuples",
             ),
             textbox=gr.Textbox(
-                placeholder="Message Mara...",
+                placeholder="Message Clara...",
                 container=False,
             ),
         )

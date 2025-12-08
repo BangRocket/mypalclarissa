@@ -7,13 +7,47 @@ from mem0 import Memory
 
 load_dotenv()
 
+# LLM Provider toggle
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
+
+# OpenRouter config
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+
+# NanoGPT config
+NANOGPT_API_KEY = os.getenv("NANOGPT_API_KEY")
+NANOGPT_MEM0_MODEL = os.getenv("NANOGPT_MEM0_MODEL", "openai/gpt-oss-120b")
+
+# OpenAI API for embeddings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Store mem0 data in a local directory
 DATA_DIR = Path(__file__).parent / "mem0_data"
 DATA_DIR.mkdir(exist_ok=True)
+
+# Configure LLM based on provider
+if LLM_PROVIDER == "nanogpt":
+    llm_config = {
+        "provider": "openai",
+        "config": {
+            "model": NANOGPT_MEM0_MODEL,
+            "api_key": NANOGPT_API_KEY,
+            "openai_base_url": "https://nano-gpt.com/api/v1",
+            "temperature": 0,
+        },
+    }
+    print(f"[mem0] Using NanoGPT with model: {NANOGPT_MEM0_MODEL}")
+else:
+    llm_config = {
+        "provider": "openai",
+        "config": {
+            "model": OPENROUTER_MODEL,
+            "api_key": OPENROUTER_API_KEY,
+            "openai_base_url": "https://openrouter.ai/api/v1",
+            "temperature": 0,
+        },
+    }
+    print(f"[mem0] Using OpenRouter with model: {OPENROUTER_MODEL}")
 
 config = {
     "vector_store": {
@@ -23,15 +57,7 @@ config = {
             "path": str(DATA_DIR),
         },
     },
-    "llm": {
-        "provider": "openai",
-        "config": {
-            "model": OPENROUTER_MODEL,
-            "api_key": OPENROUTER_API_KEY,
-            "openai_base_url": "https://openrouter.ai/api/v1",
-            "temperature": 0,
-        },
-    },
+    "llm": llm_config,
     "embedder": {
         "provider": "openai",
         "config": {

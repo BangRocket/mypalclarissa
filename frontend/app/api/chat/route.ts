@@ -1,12 +1,17 @@
 import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 // Message type from assistant-ui/ai SDK
 interface ChatMessage {
   role: string;
-  content: unknown;
+  content?: unknown;
+  parts?: Array<{ type: string; text?: string }>;
   id?: string;
 }
+
+// LLM Provider configuration
+const LLM_PROVIDER = process.env.LLM_PROVIDER || "openrouter";
 
 // Create OpenRouter client (OpenAI-compatible)
 const openrouter = createOpenAI({
@@ -18,13 +23,45 @@ const openrouter = createOpenAI({
   },
 });
 
+// Create NanoGPT client using OpenAI-compatible provider
+// This forces the standard /chat/completions endpoint
+const nanogpt = createOpenAICompatible({
+  name: "nanogpt",
+  baseURL: "https://nano-gpt.com/api/v1",
+  headers: {
+    Authorization: `Bearer ${process.env.NANOGPT_API_KEY}`,
+  },
+});
+
+// Get the appropriate model based on provider
+function getModel() {
+  if (LLM_PROVIDER === "nanogpt") {
+    const modelName = process.env.NANOGPT_MODEL || "moonshotai/kimi-k2-thinking";
+    console.log("[chat] Using NanoGPT with model:", modelName);
+    return nanogpt.chatModel(modelName);
+  } else {
+    const modelName = process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4";
+    console.log("[chat] Using OpenRouter with model:", modelName);
+    return openrouter(modelName);
+  }
+}
+
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-// Extract text content from message (can be string or array of parts)
-const getTextContent = (content: unknown): string => {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
+// Extract text content from message (handles both content and parts formats)
+const getTextContent = (message: ChatMessage): string => {
+  // Check parts first (assistant-ui format)
+  if (message.parts && Array.isArray(message.parts)) {
+    const result = message.parts
+      .filter((p) => p.type === "text")
+      .map((p) => p.text || "")
+      .join("");
+    return result;
+  }
+  // Fall back to content (standard OpenAI format)
+  if (typeof message.content === "string") return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content
       .filter((p: { type: string }) => p.type === "text")
       .map((p: { type: string; text?: string }) => p.text || "")
       .join("");
@@ -34,6 +71,7 @@ const getTextContent = (content: unknown): string => {
 
 export async function POST(req: Request) {
   console.log("[chat] POST /api/chat called");
+  console.log("[chat] LLM_PROVIDER:", LLM_PROVIDER);
   console.log("[chat] BACKEND_URL:", BACKEND_URL);
 
   const body = await req.json();
@@ -47,7 +85,7 @@ export async function POST(req: Request) {
     return new Response("No user message found", { status: 400 });
   }
 
-  const userMessageText = getTextContent(lastUserMessage.content);
+  const userMessageText = getTextContent(lastUserMessage);
   console.log("[chat] User message:", userMessageText.slice(0, 100));
 
   let contextMessages: { role: string; content: string }[] = [];
@@ -59,7 +97,6 @@ export async function POST(req: Request) {
       message: userMessageText,
       project: "Default Project",
     };
-    console.log("[chat] Sending to backend:", JSON.stringify(requestBody));
 
     const contextResponse = await fetch(`${BACKEND_URL}/api/context`, {
       method: "POST",
@@ -85,7 +122,7 @@ export async function POST(req: Request) {
     console.log("[chat] Using fallback - direct messages");
     contextMessages = messages.map((m) => ({
       role: m.role,
-      content: getTextContent(m.content),
+      content: getTextContent(m),
     })).filter((m) => m.content.length > 0);
   }
 
@@ -94,9 +131,9 @@ export async function POST(req: Request) {
     return new Response("No valid messages", { status: 400 });
   }
 
-  // Stream the response using OpenRouter
+  // Stream the response using selected provider
   const result = streamText({
-    model: openrouter(process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4"),
+    model: getModel(),
     messages: contextMessages as any,
     onFinish: async ({ text }) => {
       // Store the conversation in our backend (only if backend is available)

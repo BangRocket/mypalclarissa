@@ -1,4 +1,4 @@
-"""FastAPI backend for Mara assistant."""
+"""FastAPI backend for Clara assistant."""
 from __future__ import annotations
 
 import os
@@ -21,7 +21,7 @@ load_dotenv()
 USER_ID = os.getenv("USER_ID", "demo-user")
 DEFAULT_PROJECT = os.getenv("DEFAULT_PROJECT", "Default Project")
 
-app = FastAPI(title="Mara API")
+app = FastAPI(title="Clara API")
 
 
 @app.exception_handler(RequestValidationError)
@@ -175,6 +175,14 @@ def store_messages(request: StoreRequest):
         mm._store_message(db, sess.id, USER_ID, "user", request.user_message)
         mm._store_message(db, sess.id, USER_ID, "assistant", request.assistant_message)
         sess.last_activity_at = datetime.utcnow()
+
+        # Auto-generate title from first user message if not set
+        if not sess.title and request.user_message:
+            title = request.user_message[:50]
+            if len(request.user_message) > 50:
+                title += "..."
+            sess.title = title
+
         db.commit()
 
         # Add to mem0

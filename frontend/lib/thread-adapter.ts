@@ -140,36 +140,8 @@ export const threadListAdapter: RemoteThreadListAdapter = {
     }
   },
 
-  /**
-   * Generate a title for the thread based on messages.
-   * Returns undefined to skip automatic title generation (we handle it manually).
-   */
-  async generateTitle(remoteId: string, messages: readonly { role: string; content: unknown }[]) {
-    // Find the first user message to use as title
-    const firstUserMessage = messages.find((m) => m.role === "user");
-    if (!firstUserMessage) return undefined as never;
-
-    // Extract text content
-    let titleText = "";
-    if (typeof firstUserMessage.content === "string") {
-      titleText = firstUserMessage.content;
-    } else if (Array.isArray(firstUserMessage.content)) {
-      const textPart = (firstUserMessage.content as ContentPart[]).find(
-        (p) => p.type === "text"
-      );
-      if (textPart && textPart.text) {
-        titleText = textPart.text;
-      }
-    }
-
-    // Truncate to reasonable length
-    const title = titleText.slice(0, 50) + (titleText.length > 50 ? "..." : "");
-
-    // Save to backend
-    await threadListAdapter.rename(remoteId, title);
-
-    return undefined as never;
-  },
+  // generateTitle is intentionally omitted - we set titles manually via rename
+  // when messages are stored in the backend
 };
 
 /**
