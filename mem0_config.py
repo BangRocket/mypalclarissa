@@ -22,11 +22,21 @@ NANOGPT_MEM0_MODEL = os.getenv("NANOGPT_MEM0_MODEL", "openai/gpt-oss-120b")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Store mem0 data in a local directory
-DATA_DIR = Path(__file__).parent / "mem0_data"
-DATA_DIR.mkdir(exist_ok=True)
+# Use environment variable for Docker, default to local path for development
+# IMPORTANT: Qdrant calls rmtree on the path, so we use a subdirectory under DATA_DIR
+# to avoid deleting the Docker volume mount point itself
+BASE_DATA_DIR = Path(os.getenv("DATA_DIR", str(Path(__file__).parent)))
+QDRANT_DATA_DIR = BASE_DATA_DIR / "qdrant_data"
+QDRANT_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure LLM based on provider
 if LLM_PROVIDER == "nanogpt":
+    # IMPORTANT: mem0 auto-detects OPENROUTER_API_KEY env var and overrides config
+    # We must clear it to prevent mem0 from using OpenRouter when we want NanoGPT
+    if "OPENROUTER_API_KEY" in os.environ:
+        del os.environ["OPENROUTER_API_KEY"]
+        print("[mem0] Cleared OPENROUTER_API_KEY to prevent mem0 auto-detection")
+
     llm_config = {
         "provider": "openai",
         "config": {
@@ -54,7 +64,7 @@ config = {
         "provider": "qdrant",
         "config": {
             "collection_name": "clara_memories",
-            "path": str(DATA_DIR),
+            "path": str(QDRANT_DATA_DIR),
         },
     },
     "llm": llm_config,
@@ -66,5 +76,9 @@ config = {
         },
     },
 }
+
+# Debug: print actual config being used
+print(f"[mem0] LLM_PROVIDER env var: {LLM_PROVIDER}")
+print(f"[mem0] LLM config: {llm_config}")
 
 MEM0 = Memory.from_config(config)

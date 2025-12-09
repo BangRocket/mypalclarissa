@@ -18,15 +18,16 @@ COPY pyproject.toml poetry.lock* ./
 # Configure Poetry to not create virtual environment
 RUN poetry config virtualenvs.create false
 
-# Install dependencies
-RUN poetry install --no-dev --no-interaction --no-ansi
+# Install dependencies (production only)
+RUN poetry install --only main --no-interaction --no-ansi
 
 # Copy application code
 COPY *.py ./
 COPY user_profile.txt* ./
 
-# Create directories for persistent data
-RUN mkdir -p /app/mem0_data
+# Create directory for persistent data (mounted as volume)
+RUN mkdir -p /data
+ENV DATA_DIR=/data
 
 # Expose port
 EXPOSE 8000
