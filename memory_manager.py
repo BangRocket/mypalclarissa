@@ -22,7 +22,7 @@ USER_PROFILE_PATH = BASE_DIR / "user_profile.txt"
 PROFILE_LOADED_FLAG = BASE_DIR / ".profile_loaded"
 
 
-async def load_initial_profile(user_id: str) -> None:
+def load_initial_profile(user_id: str) -> None:
     """Load initial user profile into mem0 once on first run."""
     skip_profile = os.getenv("SKIP_PROFILE_LOAD", "true").lower() == "true"
     if skip_profile:
@@ -58,7 +58,7 @@ async def load_initial_profile(user_id: str) -> None:
                 {"role": "user", "content": f"Remember this about me: {para}"},
                 {"role": "assistant", "content": "I've noted that information about you."},
             ]
-            result = await MEM0.add(messages, user_id=user_id)
+            result = MEM0.add(messages, user_id=user_id)
             count = len(result.get("results", []))
             total_memories += count
             print(f"[mem0] Paragraph {i+1}/{len(paragraphs)}: extracted {count} memories")
@@ -124,7 +124,7 @@ class MemoryManager:
         # Update summary every SUMMARY_INTERVAL messages
         return msg_count > 0 and msg_count % SUMMARY_INTERVAL == 0
 
-    async def update_thread_summary(self, db: OrmSession, thread: Session) -> str:
+    def update_thread_summary(self, db: OrmSession, thread: Session) -> str:
         """Generate/update summary for a thread."""
         all_msgs = (
             db.query(Message)
@@ -156,15 +156,15 @@ class MemoryManager:
 
     # ---------- mem0 integration ----------
 
-    async def fetch_mem0_context(
+    def fetch_mem0_context(
         self, user_id: str, project_id: str, user_message: str
     ) -> Tuple[List[str], List[str]]:
         """Fetch relevant memories from mem0."""
         if MEM0 is None:
             return [], []
 
-        user_res = await MEM0.search(user_message, user_id=user_id)
-        proj_res = await MEM0.search(
+        user_res = MEM0.search(user_message, user_id=user_id)
+        proj_res = MEM0.search(
             user_message,
             user_id=user_id,
             filters={"project_id": project_id},
@@ -186,7 +186,7 @@ class MemoryManager:
             print(f"[mem0] Found {len(user_mems)} user memories, {len(proj_mems)} project memories")
         return user_mems, proj_mems
 
-    async def add_to_mem0(
+    def add_to_mem0(
         self,
         user_id: str,
         project_id: str,
@@ -206,7 +206,7 @@ class MemoryManager:
             {"role": "assistant", "content": assistant_reply},
         ]
 
-        result = await MEM0.add(
+        result = MEM0.add(
             history_slice,
             user_id=user_id,
             metadata={"project_id": project_id},

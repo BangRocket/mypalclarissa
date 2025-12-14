@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from mem0 import AsyncMemory
+from mem0 import Memory
 
 load_dotenv()
 
@@ -30,6 +29,10 @@ PROVIDER_DEFAULTS = {
         "api_key_env": "NANOGPT_API_KEY",
     },
     "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "api_key_env": "OPENAI_API_KEY",
+    },
+    "openai-custom": {
         "base_url": os.getenv("CUSTOM_OPENAI_BASE_URL", "https://api.openai.com/v1"),
         "api_key_env": "CUSTOM_OPENAI_API_KEY",
     },
@@ -256,9 +259,11 @@ OUTPUT FORMAT (JSON only):
 """
 
 # Build config - embeddings always use OpenAI
+# NOTE: Custom prompts disabled - they break both vector AND graph extraction
+# mem0's default prompts work better with graph entity extraction
 config = {
-    "custom_prompt": CUSTOM_EXTRACTION_PROMPT,
-    "custom_update_memory_prompt": CUSTOM_UPDATE_PROMPT,
+    # "custom_prompt": CUSTOM_EXTRACTION_PROMPT,
+    # "custom_update_memory_prompt": CUSTOM_UPDATE_PROMPT,
     "vector_store": {
         "provider": "qdrant",
         "config": {
@@ -282,6 +287,9 @@ if llm_config:
 # Add graph store config if configured
 if graph_store_config:
     config["graph_store"] = graph_store_config
+    # Give graph store its own LLM config (same provider, no custom prompts)
+    if llm_config:
+        config["graph_store"]["llm"] = llm_config.copy()
 
 # Debug summary
 print(f"[mem0] Embeddings: OpenAI text-embedding-3-small")
@@ -290,51 +298,28 @@ if graph_store_config:
 else:
     print(f"[mem0] Graph memory: DISABLED (set GRAPH_STORE_PROVIDER to enable)")
 
-# Initialize mem0 (async version)
-MEM0: AsyncMemory | None = None
+# Initialize mem0 (synchronous version)
+MEM0: Memory | None = None
 
 
-async def _async_init_mem0() -> AsyncMemory | None:
-    """Initialize mem0 asynchronously."""
+def _init_mem0() -> Memory | None:
+    """Initialize mem0 synchronously."""
     if not OPENAI_API_KEY:
         print("[mem0] OPENAI_API_KEY not set - mem0 disabled (no embeddings)")
         return None
 
     try:
         _clear_mem0_env_vars()
-        # AsyncMemory.from_config may return a coroutine
-        result = AsyncMemory.from_config(config)
-        if asyncio.iscoroutine(result):
-            mem0 = await result
-        else:
-            mem0 = result
-        print("[mem0] AsyncMemory initialized successfully")
+        mem0 = Memory.from_config(config)
+        print("[mem0] Memory initialized successfully")
         return mem0
     except Exception as e:
-        print(f"[mem0] WARNING: Failed to initialize AsyncMemory: {e}")
+        print(f"[mem0] WARNING: Failed to initialize Memory: {e}")
         print("[mem0] App will run without memory features")
         return None
     finally:
         _restore_env_vars()
 
 
-def _init_mem0_sync() -> AsyncMemory | None:
-    """Initialize mem0 at module load time using asyncio.run()."""
-    try:
-        # Check if we're already in an event loop
-        try:
-            loop = asyncio.get_running_loop()
-            # We're in an async context, can't use asyncio.run()
-            # This shouldn't happen at module load, but handle it
-            print("[mem0] Warning: Already in event loop, deferring initialization")
-            return None
-        except RuntimeError:
-            # No event loop running, safe to use asyncio.run()
-            return asyncio.run(_async_init_mem0())
-    except Exception as e:
-        print(f"[mem0] Error during sync initialization: {e}")
-        return None
-
-
 # Initialize at module load
-MEM0 = _init_mem0_sync()
+MEM0 = _init_mem0()

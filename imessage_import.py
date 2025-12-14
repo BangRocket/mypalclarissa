@@ -16,7 +16,6 @@ Requires Full Disk Access for Terminal in System Preferences > Security & Privac
 from __future__ import annotations
 
 import argparse
-import asyncio
 import os
 import sys
 from pathlib import Path
@@ -205,7 +204,7 @@ def format_conversation_for_mem0(conversation: list, contact_id: str, contact_na
     return messages
 
 
-async def import_to_mem0(
+def import_to_mem0(
     contacts: list[str],
     contact_names: Optional[dict[str, str]] = None,
     db_path: Optional[str] = None,
@@ -298,7 +297,7 @@ async def import_to_mem0(
 
                 # Add to mem0 with contact metadata
                 try:
-                    result = await MEM0.add(
+                    result = MEM0.add(
                         context_intro + mem0_messages,
                         user_id=user_id,
                         metadata={
@@ -425,14 +424,14 @@ Examples:
                 contact_id, name = mapping.split("=", 1)
                 contact_names[contact_id.strip()] = name.strip()
 
-    asyncio.run(import_to_mem0(
+    import_to_mem0(
         contacts=contacts,
         contact_names=contact_names,
         db_path=args.db_path,
         limit=args.limit,
         dry_run=args.dry_run,
         user_id=args.user_id,
-    ))
+    )
 
 
 if __name__ == "__main__":

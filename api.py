@@ -96,7 +96,7 @@ class ChatRequest(BaseModel):
 
 
 @app.on_event("startup")
-async def startup():
+def startup():
     """Initialize database and memory manager on startup."""
     global mm
     print("[api] Starting up...")
@@ -106,7 +106,7 @@ async def startup():
     print("[api] LLM created")
     mm = MemoryManager(llm_callable=llm)
     print("[api] MemoryManager initialized")
-    await load_initial_profile(USER_ID)
+    load_initial_profile(USER_ID)
     print("[api] Initial profile loaded")
     print("[api] Ready to accept requests on http://localhost:8000")
 
@@ -127,7 +127,7 @@ def ensure_project(name: str) -> str:
 
 
 @app.post("/api/context")
-async def get_context(request: ContextRequest):
+def get_context(request: ContextRequest):
     """Get enriched context for a message (system prompt + memories)."""
     print(f"[api] /api/context called with message: {request.message[:50]}...")
     project_id = ensure_project(request.project or DEFAULT_PROJECT)
@@ -145,7 +145,7 @@ async def get_context(request: ContextRequest):
         recent_msgs = mm.get_recent_messages(db, thread.id)
 
         # Get mem0 memories
-        user_mems, proj_mems = await mm.fetch_mem0_context(
+        user_mems, proj_mems = mm.fetch_mem0_context(
             USER_ID, project_id, request.message
         )
 
@@ -167,7 +167,7 @@ async def get_context(request: ContextRequest):
 
 
 @app.post("/api/store")
-async def store_messages(request: StoreRequest):
+def store_messages(request: StoreRequest):
     """Store user and assistant messages after completion."""
     project_id = ensure_project(request.project or DEFAULT_PROJECT)
 
@@ -199,10 +199,10 @@ async def store_messages(request: StoreRequest):
 
         # Update thread summary periodically
         if mm.should_update_summary(db, thread.id):
-            await mm.update_thread_summary(db, thread)
+            mm.update_thread_summary(db, thread)
 
         # Add to mem0
-        await mm.add_to_mem0(
+        mm.add_to_mem0(
             USER_ID, project_id, recent_msgs,
             request.user_message, request.assistant_message
         )
@@ -213,7 +213,7 @@ async def store_messages(request: StoreRequest):
 
 
 @app.post("/api/chat")
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     """
     Chat endpoint for web UI.
     Gets context, calls LLM, stores messages, returns response.
@@ -234,7 +234,7 @@ async def chat(request: ChatRequest):
         recent_msgs = mm.get_recent_messages(db, thread.id)
 
         # Get mem0 memories
-        user_mems, proj_mems = await mm.fetch_mem0_context(
+        user_mems, proj_mems = mm.fetch_mem0_context(
             USER_ID, project_id, request.message
         )
 
@@ -267,10 +267,10 @@ async def chat(request: ChatRequest):
 
         # Update thread summary periodically
         if mm.should_update_summary(db, thread.id):
-            await mm.update_thread_summary(db, thread)
+            mm.update_thread_summary(db, thread)
 
         # Add to mem0
-        await mm.add_to_mem0(
+        mm.add_to_mem0(
             USER_ID, project_id, recent_msgs,
             request.message, response
         )
@@ -587,13 +587,13 @@ class ContactImportRequest(BaseModel):
 
 
 @app.get("/api/memories")
-async def list_memories(project_id: str = None):
+def list_memories(project_id: str = None):
     """List all memories for the user, optionally filtered by project."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.get_all(user_id=USER_ID)
+        result = MEM0.get_all(user_id=USER_ID)
         memories = result.get("results", []) if isinstance(result, dict) else result
 
         # Filter by project if specified
@@ -611,13 +611,13 @@ async def list_memories(project_id: str = None):
 
 
 @app.get("/api/memories/{memory_id}")
-async def get_memory(memory_id: str):
+def get_memory(memory_id: str):
     """Get a specific memory by ID."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.get(memory_id)
+        result = MEM0.get(memory_id)
         if not result:
             raise HTTPException(status_code=404, detail="Memory not found")
         print(f"[api] Retrieved memory {memory_id}")
@@ -630,13 +630,13 @@ async def get_memory(memory_id: str):
 
 
 @app.put("/api/memories/{memory_id}")
-async def update_memory(memory_id: str, request: MemoryUpdateRequest):
+def update_memory(memory_id: str, request: MemoryUpdateRequest):
     """Update a memory's text."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.update(memory_id, request.text)
+        result = MEM0.update(memory_id, request.text)
         print(f"[api] Updated memory {memory_id}")
         return {"status": "ok", "result": result}
     except Exception as e:
@@ -645,13 +645,13 @@ async def update_memory(memory_id: str, request: MemoryUpdateRequest):
 
 
 @app.delete("/api/memories/{memory_id}")
-async def delete_memory(memory_id: str):
+def delete_memory(memory_id: str):
     """Delete a specific memory."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        await MEM0.delete(memory_id)
+        MEM0.delete(memory_id)
         print(f"[api] Deleted memory {memory_id}")
         return {"status": "ok"}
     except Exception as e:
@@ -660,7 +660,7 @@ async def delete_memory(memory_id: str):
 
 
 @app.delete("/api/memories")
-async def delete_all_memories(project_id: str = None):
+def delete_all_memories(project_id: str = None):
     """Delete all memories for the user, optionally filtered by project."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
@@ -668,17 +668,17 @@ async def delete_all_memories(project_id: str = None):
     try:
         if project_id:
             # Get all memories and delete those matching project
-            result = await MEM0.get_all(user_id=USER_ID)
+            result = MEM0.get_all(user_id=USER_ID)
             memories = result.get("results", []) if isinstance(result, dict) else result
             deleted = 0
             for m in memories:
                 if m.get("metadata", {}).get("project_id") == project_id:
-                    await MEM0.delete(m["id"])
+                    MEM0.delete(m["id"])
                     deleted += 1
             print(f"[api] Deleted {deleted} memories for project {project_id}")
             return {"status": "ok", "deleted": deleted}
         else:
-            await MEM0.delete_all(user_id=USER_ID)
+            MEM0.delete_all(user_id=USER_ID)
             print(f"[api] Deleted all memories for user {USER_ID}")
             return {"status": "ok"}
     except Exception as e:
@@ -687,13 +687,13 @@ async def delete_all_memories(project_id: str = None):
 
 
 @app.post("/api/memories/search")
-async def search_memories(request: ContextRequest):
+def search_memories(request: ContextRequest):
     """Search memories by query."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.search(
+        result = MEM0.search(
             request.message,
             user_id=USER_ID,
         )
@@ -708,13 +708,13 @@ async def search_memories(request: ContextRequest):
 # ============== Contact/People API ==============
 
 @app.get("/api/contacts")
-async def list_contacts():
+def list_contacts():
     """List all contacts that have memories stored."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.get_all(user_id=USER_ID)
+        result = MEM0.get_all(user_id=USER_ID)
         memories = result.get("results", []) if isinstance(result, dict) else result
 
         # Extract unique contacts from metadata
@@ -739,13 +739,13 @@ async def list_contacts():
 
 
 @app.get("/api/contacts/{contact_id}/memories")
-async def get_contact_memories(contact_id: str):
+def get_contact_memories(contact_id: str):
     """Get all memories related to a specific contact."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.get_all(user_id=USER_ID)
+        result = MEM0.get_all(user_id=USER_ID)
         memories = result.get("results", []) if isinstance(result, dict) else result
 
         # Filter by contact_id in metadata
@@ -762,19 +762,19 @@ async def get_contact_memories(contact_id: str):
 
 
 @app.delete("/api/contacts/{contact_id}/memories")
-async def delete_contact_memories(contact_id: str):
+def delete_contact_memories(contact_id: str):
     """Delete all memories related to a specific contact."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
 
     try:
-        result = await MEM0.get_all(user_id=USER_ID)
+        result = MEM0.get_all(user_id=USER_ID)
         memories = result.get("results", []) if isinstance(result, dict) else result
 
         deleted = 0
         for m in memories:
             if m.get("metadata", {}).get("contact_id") == contact_id:
-                await MEM0.delete(m["id"])
+                MEM0.delete(m["id"])
                 deleted += 1
 
         print(f"[api] Deleted {deleted} memories for contact {contact_id}")
@@ -819,7 +819,7 @@ def list_imessage_contacts():
 
 
 @app.post("/api/imessage/import")
-async def import_imessage_contact(request: ContactImportRequest):
+def import_imessage_contact(request: ContactImportRequest):
     """Import iMessage conversations for a specific contact into mem0."""
     if MEM0 is None:
         raise HTTPException(status_code=503, detail="Memory system not available")
@@ -831,7 +831,7 @@ async def import_imessage_contact(request: ContactImportRequest):
         if request.contact_name:
             contact_names[request.contact_id] = request.contact_name
 
-        await import_to_mem0(
+        import_to_mem0(
             contacts=[request.contact_id],
             contact_names=contact_names,
             limit=request.limit,
