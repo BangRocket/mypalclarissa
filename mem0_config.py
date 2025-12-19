@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 from mem0 import Memory
 
@@ -41,7 +42,13 @@ PROVIDER_DEFAULTS = {
 # IMPORTANT: mem0 auto-detects these env vars and overrides our config!
 # We must save and clear them before mem0 initialization, then restore after.
 _saved_env_vars = {}
-_env_vars_to_clear = ["OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "MEM0_API_KEY"]
+_env_vars_to_clear = [
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "MEM0_API_KEY",
+]
+
 
 def _clear_mem0_env_vars():
     """Clear env vars that mem0 auto-detects, save them for later restoration."""
@@ -49,6 +56,7 @@ def _clear_mem0_env_vars():
         if var in os.environ:
             _saved_env_vars[var] = os.environ.pop(var)
             print(f"[mem0] Temporarily cleared {var} to prevent auto-detection")
+
 
 def _restore_env_vars():
     """Restore cleared env vars after mem0 initialization."""
@@ -63,8 +71,12 @@ QDRANT_DATA_DIR = BASE_DATA_DIR / "qdrant_data"
 QDRANT_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Graph memory configuration (optional - for relationship tracking)
-# Supported providers: "neo4j", "kuzu" (embedded), or empty to disable
-GRAPH_STORE_PROVIDER = os.getenv("GRAPH_STORE_PROVIDER", "").lower()
+# Master toggle - set to "true" to enable graph memory (disabled by default)
+ENABLE_GRAPH_MEMORY = os.getenv("ENABLE_GRAPH_MEMORY", "false").lower() == "true"
+
+# Supported providers: "neo4j", "kuzu" (embedded)
+# Only used when ENABLE_GRAPH_MEMORY is true
+GRAPH_STORE_PROVIDER = os.getenv("GRAPH_STORE_PROVIDER", "neo4j").lower()
 
 # Neo4j configuration (if using neo4j provider)
 NEO4J_URL = os.getenv("NEO4J_URL")
@@ -85,13 +97,17 @@ def _get_graph_store_config() -> dict | None:
     Supports:
     - neo4j: Requires external Neo4j server or Neo4j Aura (free tier available)
     - kuzu: Embedded graph database, no external server needed
+
+    Controlled by ENABLE_GRAPH_MEMORY env var (default: false).
     """
-    if not GRAPH_STORE_PROVIDER:
+    if not ENABLE_GRAPH_MEMORY:
         return None
 
     if GRAPH_STORE_PROVIDER == "neo4j":
         if not NEO4J_URL or not NEO4J_PASSWORD:
-            print("[mem0] Graph store: Neo4j configured but NEO4J_URL or NEO4J_PASSWORD not set")
+            print(
+                "[mem0] Graph store: Neo4j configured but NEO4J_URL or NEO4J_PASSWORD not set"
+            )
             return None
 
         print(f"[mem0] Graph store: Neo4j at {NEO4J_URL}")
@@ -133,7 +149,9 @@ def _get_llm_config() -> dict | None:
     # Get API key: explicit MEM0_API_KEY > provider's default key
     api_key = MEM0_API_KEY or os.getenv(provider_config["api_key_env"])
     if not api_key:
-        print(f"[mem0] No API key found for MEM0_PROVIDER={MEM0_PROVIDER} - mem0 LLM disabled")
+        print(
+            f"[mem0] No API key found for MEM0_PROVIDER={MEM0_PROVIDER} - mem0 LLM disabled"
+        )
         return None
 
     # Get base URL: explicit MEM0_BASE_URL > provider's default URL
@@ -292,11 +310,11 @@ if graph_store_config:
         config["graph_store"]["llm"] = llm_config.copy()
 
 # Debug summary
-print(f"[mem0] Embeddings: OpenAI text-embedding-3-small")
+print("[mem0] Embeddings: OpenAI text-embedding-3-small")
 if graph_store_config:
     print(f"[mem0] Graph memory: ENABLED ({GRAPH_STORE_PROVIDER})")
 else:
-    print(f"[mem0] Graph memory: DISABLED (set GRAPH_STORE_PROVIDER to enable)")
+    print("[mem0] Graph memory: DISABLED (set ENABLE_GRAPH_MEMORY=true to enable)")
 
 # Initialize mem0 (synchronous version)
 MEM0: Memory | None = None
