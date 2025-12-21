@@ -40,8 +40,8 @@ except ImportError:
 
 # Configuration
 E2B_API_KEY = os.getenv("E2B_API_KEY")
-E2B_TIMEOUT = int(os.getenv("E2B_TIMEOUT", "300"))  # 5 minutes default
-SANDBOX_IDLE_TIMEOUT = 600  # 10 minutes before cleanup
+E2B_TIMEOUT = int(os.getenv("E2B_TIMEOUT", "900"))  # 15 minutes default
+SANDBOX_IDLE_TIMEOUT = 900  # 15 minutes before cleanup
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 
@@ -333,7 +333,7 @@ class E2BSandboxManager:
         """Check if E2B is available and configured."""
         return E2B_AVAILABLE and bool(E2B_API_KEY)
 
-    async def get_sandbox(self, user_id: str) -> Sandbox | None:
+    async def get_sandbox(self, user_id: str) -> CodeInterpreterSandbox | None:
         """Get or create a sandbox for a user."""
         if not self.is_available():
             return None
@@ -342,12 +342,23 @@ class E2BSandboxManager:
             # Check for existing session
             if user_id in self.sessions:
                 session = self.sessions[user_id]
-                session.last_used = datetime.now(UTC)
-                return session.sandbox
+                sandbox = session.sandbox
+
+                # Try to extend the timeout to keep the sandbox alive
+                try:
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(
+                        None, lambda: sandbox.set_timeout(E2B_TIMEOUT)
+                    )
+                    session.last_used = datetime.now(UTC)
+                    return sandbox
+                except Exception as e:
+                    # Sandbox expired or not found - remove from cache
+                    print(f"[e2b] Sandbox expired for {user_id}, creating new one: {e}")
+                    del self.sessions[user_id]
 
             # Create new sandbox
             try:
-                # Run sandbox creation in executor (it's sync)
                 loop = asyncio.get_event_loop()
                 sandbox = await loop.run_in_executor(
                     None, lambda: CodeInterpreterSandbox(timeout=E2B_TIMEOUT)
@@ -364,197 +375,243 @@ class E2BSandboxManager:
                 print(f"[e2b] Failed to create sandbox for {user_id}: {e}")
                 return None
 
+    async def _invalidate_sandbox(self, user_id: str):
+        """Remove a stale sandbox from cache."""
+        async with self._lock:
+            if user_id in self.sessions:
+                print(f"[e2b] Invalidating stale sandbox for {user_id}")
+                del self.sessions[user_id]
+
+    def _is_sandbox_error(self, error: Exception) -> bool:
+        """Check if an exception is a sandbox expiration/not-found error."""
+        error_str = str(error).lower()
+        return "502" in error_str or "not found" in error_str or "sandbox" in error_str
+
     async def execute_code(
         self, user_id: str, code: str, description: str = ""
     ) -> ExecutionResult:
         """Execute Python code in a user's sandbox."""
         start_time = datetime.now(UTC)
+        max_retries = 2
 
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False,
-                output="",
-                error="E2B sandbox not available. Set E2B_API_KEY to enable.",
-            )
-
-        try:
-            # Execute code
-            loop = asyncio.get_event_loop()
-            execution = await loop.run_in_executor(
-                None, lambda: sandbox.run_code(code)
-            )
-
-            # Update session stats
-            if user_id in self.sessions:
-                self.sessions[user_id].execution_count += 1
-                self.sessions[user_id].last_used = datetime.now(UTC)
-
-            # Process results
-            elapsed = (datetime.now(UTC) - start_time).total_seconds()
-
-            if execution.error:
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
                 return ExecutionResult(
                     success=False,
-                    output=execution.logs.stdout if execution.logs else "",
-                    error=(
-                        f"{execution.error.name}: {execution.error.value}\n"
-                        f"{execution.error.traceback}"
-                    ),
+                    output="",
+                    error="E2B sandbox not available. Set E2B_API_KEY to enable.",
+                )
+
+            try:
+                # Execute code
+                loop = asyncio.get_event_loop()
+                execution = await loop.run_in_executor(
+                    None, lambda: sandbox.run_code(code)
+                )
+
+                # Update session stats
+                if user_id in self.sessions:
+                    self.sessions[user_id].execution_count += 1
+                    self.sessions[user_id].last_used = datetime.now(UTC)
+
+                # Process results
+                elapsed = (datetime.now(UTC) - start_time).total_seconds()
+
+                if execution.error:
+                    # Handle stdout being a list or string
+                    stdout = ""
+                    if execution.logs and execution.logs.stdout:
+                        stdout = execution.logs.stdout
+                        if isinstance(stdout, list):
+                            stdout = "\n".join(str(s) for s in stdout)
+                    return ExecutionResult(
+                        success=False,
+                        output=stdout,
+                        error=(
+                            f"{execution.error.name}: {execution.error.value}\n"
+                            f"{execution.error.traceback}"
+                        ),
+                        execution_time=elapsed,
+                    )
+
+                # Combine outputs
+                output_parts = []
+                if execution.logs and execution.logs.stdout:
+                    stdout = execution.logs.stdout
+                    # Handle stdout being a list of strings
+                    if isinstance(stdout, list):
+                        output_parts.extend(str(s) for s in stdout)
+                    else:
+                        output_parts.append(str(stdout))
+                if execution.results:
+                    for result in execution.results:
+                        if hasattr(result, "text") and result.text:
+                            output_parts.append(str(result.text))
+                        elif hasattr(result, "png") and result.png:
+                            output_parts.append("[Generated image/chart]")
+
+                return ExecutionResult(
+                    success=True,
+                    output="\n".join(output_parts) if output_parts else "(no output)",
                     execution_time=elapsed,
                 )
 
-            # Combine outputs
-            output_parts = []
-            if execution.logs and execution.logs.stdout:
-                output_parts.append(execution.logs.stdout)
-            if execution.results:
-                for result in execution.results:
-                    if hasattr(result, "text") and result.text:
-                        output_parts.append(str(result.text))
-                    elif hasattr(result, "png") and result.png:
-                        output_parts.append("[Generated image/chart]")
+            except Exception as e:
+                # Check if sandbox expired/not found - retry with fresh sandbox
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
 
-            return ExecutionResult(
-                success=True,
-                output="\n".join(output_parts) if output_parts else "(no output)",
-                execution_time=elapsed,
-            )
+                elapsed = (datetime.now(UTC) - start_time).total_seconds()
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=str(e),
+                    execution_time=elapsed,
+                )
 
-        except Exception as e:
-            elapsed = (datetime.now(UTC) - start_time).total_seconds()
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=str(e),
-                execution_time=elapsed,
-            )
+        # Should not reach here, but just in case
+        return ExecutionResult(
+            success=False,
+            output="",
+            error="Max retries exceeded",
+        )
 
     async def install_package(self, user_id: str, package: str) -> ExecutionResult:
         """Install a pip package in a user's sandbox."""
-        install_code = (
-            f"import subprocess; "
-            f"subprocess.run(['pip', 'install', '{package}'], "
-            f"capture_output=True, text=True)"
-        )
-        result = await self.execute_code(user_id, install_code, f"Installing {package}")
-
-        # Also run a simple pip install via shell for better output
-        sandbox = await self.get_sandbox(user_id)
-        if sandbox:
-            try:
-                loop = asyncio.get_event_loop()
-                cmd_result = await loop.run_in_executor(
-                    None, lambda: sandbox.commands.run(f"pip install {package}")
-                )
-                return ExecutionResult(
-                    success=cmd_result.exit_code == 0,
-                    output=cmd_result.stdout or "",
-                    error=cmd_result.stderr if cmd_result.exit_code != 0 else None,
-                )
-            except Exception as e:
-                return ExecutionResult(success=False, output="", error=str(e))
-
-        return result
+        # Use run_shell which has retry logic built in
+        return await self.run_shell(user_id, f"pip install {package}")
 
     async def read_file(self, user_id: str, path: str) -> ExecutionResult:
         """Read a file from a user's sandbox."""
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False, output="", error="Sandbox not available"
-            )
+        max_retries = 2
 
-        try:
-            loop = asyncio.get_event_loop()
-            content = await loop.run_in_executor(
-                None, lambda: sandbox.files.read(path)
-            )
-            # content is bytes
-            text = content.decode("utf-8") if isinstance(content, bytes) else content
-            return ExecutionResult(success=True, output=text)
-        except Exception as e:
-            return ExecutionResult(success=False, output="", error=str(e))
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
+                return ExecutionResult(
+                    success=False, output="", error="Sandbox not available"
+                )
+
+            try:
+                loop = asyncio.get_event_loop()
+                content = await loop.run_in_executor(
+                    None, lambda: sandbox.files.read(path)
+                )
+                # content is bytes
+                text = content.decode("utf-8") if isinstance(content, bytes) else content
+                return ExecutionResult(success=True, output=text)
+            except Exception as e:
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error in read_file, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
+                return ExecutionResult(success=False, output="", error=str(e))
+
+        return ExecutionResult(success=False, output="", error="Max retries exceeded")
 
     async def write_file(
         self, user_id: str, path: str, content: str | bytes
     ) -> ExecutionResult:
         """Write a file to a user's sandbox. Accepts both text and binary content."""
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False, output="", error="Sandbox not available"
-            )
+        max_retries = 2
 
-        try:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, lambda: sandbox.files.write(path, content)
-            )
-            return ExecutionResult(success=True, output=f"File written to {path}")
-        except Exception as e:
-            return ExecutionResult(success=False, output="", error=str(e))
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
+                return ExecutionResult(
+                    success=False, output="", error="Sandbox not available"
+                )
+
+            try:
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None, lambda: sandbox.files.write(path, content)
+                )
+                return ExecutionResult(success=True, output=f"File written to {path}")
+            except Exception as e:
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error in write_file, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
+                return ExecutionResult(success=False, output="", error=str(e))
+
+        return ExecutionResult(success=False, output="", error="Max retries exceeded")
 
     async def list_files(
         self, user_id: str, path: str = "/home/user"
     ) -> ExecutionResult:
         """List files in a directory in a user's sandbox."""
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False, output="", error="Sandbox not available"
-            )
+        max_retries = 2
 
-        try:
-            loop = asyncio.get_event_loop()
-            files = await loop.run_in_executor(
-                None, lambda: sandbox.files.list(path)
-            )
-            file_list = "\n".join(
-                f"{'[dir]' if f.is_dir else '[file]'} {f.name}"
-                for f in files
-            )
-            return ExecutionResult(
-                success=True, output=file_list or "(empty directory)"
-            )
-        except Exception as e:
-            return ExecutionResult(success=False, output="", error=str(e))
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
+                return ExecutionResult(
+                    success=False, output="", error="Sandbox not available"
+                )
+
+            try:
+                loop = asyncio.get_event_loop()
+                files = await loop.run_in_executor(
+                    None, lambda: sandbox.files.list(path)
+                )
+                file_list = "\n".join(
+                    f"{'[dir]' if f.is_dir else '[file]'} {f.name}"
+                    for f in files
+                )
+                return ExecutionResult(
+                    success=True, output=file_list or "(empty directory)"
+                )
+            except Exception as e:
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error in list_files, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
+                return ExecutionResult(success=False, output="", error=str(e))
+
+        return ExecutionResult(success=False, output="", error="Max retries exceeded")
 
     async def run_shell(self, user_id: str, command: str) -> ExecutionResult:
         """Run a shell command in a user's sandbox."""
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False, output="", error="Sandbox not available"
-            )
+        max_retries = 2
 
-        try:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, lambda: sandbox.commands.run(command)
-            )
-            output = result.stdout or ""
-            if result.stderr:
-                output += f"\n[stderr]: {result.stderr}"
-            exit_ok = result.exit_code == 0
-            return ExecutionResult(
-                success=exit_ok,
-                output=output,
-                error=None if exit_ok else f"Exit code: {result.exit_code}",
-            )
-        except Exception as e:
-            return ExecutionResult(success=False, output="", error=str(e))
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
+                return ExecutionResult(
+                    success=False, output="", error="Sandbox not available"
+                )
+
+            try:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None, lambda: sandbox.commands.run(command)
+                )
+                output = result.stdout or ""
+                if result.stderr:
+                    output += f"\n[stderr]: {result.stderr}"
+                exit_ok = result.exit_code == 0
+                return ExecutionResult(
+                    success=exit_ok,
+                    output=output,
+                    error=None if exit_ok else f"Exit code: {result.exit_code}",
+                )
+            except Exception as e:
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error in run_shell, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
+                return ExecutionResult(success=False, output="", error=str(e))
+
+        return ExecutionResult(success=False, output="", error="Max retries exceeded")
 
     async def unzip_file(
         self, user_id: str, path: str, destination: str | None = None
     ) -> ExecutionResult:
         """Extract an archive in a user's sandbox."""
-        sandbox = await self.get_sandbox(user_id)
-        if not sandbox:
-            return ExecutionResult(
-                success=False, output="", error="Sandbox not available"
-            )
-
         # Determine destination directory
         if not destination:
             # Extract to same directory as the archive
@@ -581,39 +638,54 @@ class E2BSandboxManager:
             # Try to detect format and extract
             cmd = f"unzip -o '{path}' -d '{destination}' 2>/dev/null || tar -xf '{path}' -C '{destination}'"
 
-        try:
-            loop = asyncio.get_event_loop()
+        max_retries = 2
 
-            # Ensure destination exists
-            await loop.run_in_executor(
-                None, lambda: sandbox.commands.run(f"mkdir -p '{destination}'")
-            )
-
-            # Run extraction
-            result = await loop.run_in_executor(
-                None, lambda: sandbox.commands.run(cmd)
-            )
-
-            output = result.stdout or ""
-            if result.stderr and result.exit_code == 0:
-                # Some tools output to stderr even on success
-                output += f"\n{result.stderr}"
-
-            if result.exit_code == 0:
-                # List extracted files
-                ls_result = await loop.run_in_executor(
-                    None, lambda: sandbox.commands.run(f"ls -la '{destination}'")
-                )
-                output += f"\n\nExtracted to {destination}:\n{ls_result.stdout}"
-                return ExecutionResult(success=True, output=output)
-            else:
+        for attempt in range(max_retries):
+            sandbox = await self.get_sandbox(user_id)
+            if not sandbox:
                 return ExecutionResult(
-                    success=False,
-                    output=output,
-                    error=f"Extraction failed: {result.stderr or 'Unknown error'}",
+                    success=False, output="", error="Sandbox not available"
                 )
-        except Exception as e:
-            return ExecutionResult(success=False, output="", error=str(e))
+
+            try:
+                loop = asyncio.get_event_loop()
+
+                # Ensure destination exists
+                await loop.run_in_executor(
+                    None, lambda: sandbox.commands.run(f"mkdir -p '{destination}'")
+                )
+
+                # Run extraction
+                result = await loop.run_in_executor(
+                    None, lambda: sandbox.commands.run(cmd)
+                )
+
+                output = result.stdout or ""
+                if result.stderr and result.exit_code == 0:
+                    # Some tools output to stderr even on success
+                    output += f"\n{result.stderr}"
+
+                if result.exit_code == 0:
+                    # List extracted files
+                    ls_result = await loop.run_in_executor(
+                        None, lambda: sandbox.commands.run(f"ls -la '{destination}'")
+                    )
+                    output += f"\n\nExtracted to {destination}:\n{ls_result.stdout}"
+                    return ExecutionResult(success=True, output=output)
+                else:
+                    return ExecutionResult(
+                        success=False,
+                        output=output,
+                        error=f"Extraction failed: {result.stderr or 'Unknown error'}",
+                    )
+            except Exception as e:
+                if self._is_sandbox_error(e) and attempt < max_retries - 1:
+                    print(f"[e2b] Sandbox error in unzip_file, retrying: {e}")
+                    await self._invalidate_sandbox(user_id)
+                    continue
+                return ExecutionResult(success=False, output="", error=str(e))
+
+        return ExecutionResult(success=False, output="", error="Max retries exceeded")
 
     async def web_search(
         self, query: str, max_results: int = 5, search_depth: str = "basic"
@@ -794,46 +866,104 @@ class E2BSandboxManager:
         self, user_id: str, tool_name: str, arguments: dict
     ) -> ExecutionResult:
         """Handle a tool call from the LLM."""
-        if tool_name == "execute_python":
-            return await self.execute_code(
-                user_id,
-                arguments["code"],
-                arguments.get("description", ""),
-            )
-        elif tool_name == "install_package":
-            return await self.install_package(user_id, arguments["package"])
-        elif tool_name == "read_file":
-            return await self.read_file(user_id, arguments["path"])
-        elif tool_name == "write_file":
-            return await self.write_file(
-                user_id, arguments["path"], arguments["content"]
-            )
-        elif tool_name == "list_files":
-            return await self.list_files(
-                user_id, arguments.get("path", "/home/user")
-            )
-        elif tool_name == "run_shell":
-            return await self.run_shell(user_id, arguments["command"])
-        elif tool_name == "unzip_file":
-            return await self.unzip_file(
-                user_id, arguments["path"], arguments.get("destination")
-            )
-        elif tool_name == "web_search":
-            return await self.web_search(
-                arguments["query"],
-                arguments.get("max_results", 5),
-                arguments.get("search_depth", "basic"),
-            )
-        elif tool_name == "run_claude_code":
-            return await self.run_claude_code(
-                arguments["task"],
-                arguments.get("timeout_minutes", 5),
-            )
-        else:
+        print(f"[e2b] handle_tool_call: {tool_name} with args: {arguments}")
+
+        try:
+            if tool_name == "execute_python":
+                # Handle both 'code' and 'python_code' argument names
+                code = arguments.get("code") or arguments.get("python_code") or arguments.get("script")
+                if not code:
+                    return ExecutionResult(
+                        success=False,
+                        output="",
+                        error=f"Missing 'code' argument. Received: {list(arguments.keys())}",
+                    )
+                return await self.execute_code(
+                    user_id,
+                    code,
+                    arguments.get("description", ""),
+                )
+            elif tool_name == "install_package":
+                package = arguments.get("package") or arguments.get("name")
+                if not package:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'package' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.install_package(user_id, package)
+            elif tool_name == "read_file":
+                path = arguments.get("path") or arguments.get("file_path") or arguments.get("filename")
+                if not path:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'path' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.read_file(user_id, path)
+            elif tool_name == "write_file":
+                path = arguments.get("path") or arguments.get("file_path") or arguments.get("filename")
+                content = arguments.get("content") or arguments.get("data") or arguments.get("text")
+                if not path or content is None:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'path' or 'content' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.write_file(user_id, path, content)
+            elif tool_name == "list_files":
+                return await self.list_files(
+                    user_id, arguments.get("path") or arguments.get("directory") or "/home/user"
+                )
+            elif tool_name == "run_shell":
+                command = arguments.get("command") or arguments.get("cmd")
+                if not command:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'command' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.run_shell(user_id, command)
+            elif tool_name == "unzip_file":
+                path = arguments.get("path") or arguments.get("file_path") or arguments.get("archive")
+                if not path:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'path' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.unzip_file(
+                    user_id, path, arguments.get("destination") or arguments.get("dest")
+                )
+            elif tool_name == "web_search":
+                query = arguments.get("query") or arguments.get("q") or arguments.get("search")
+                if not query:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'query' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.web_search(
+                    query,
+                    arguments.get("max_results", 5),
+                    arguments.get("search_depth", "basic"),
+                )
+            elif tool_name == "run_claude_code":
+                task = arguments.get("task") or arguments.get("prompt") or arguments.get("instructions")
+                if not task:
+                    return ExecutionResult(
+                        success=False, output="",
+                        error=f"Missing 'task' argument. Received: {list(arguments.keys())}"
+                    )
+                return await self.run_claude_code(
+                    task,
+                    arguments.get("timeout_minutes", 5),
+                )
+            else:
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Unknown tool: {tool_name}",
+                )
+        except KeyError as e:
             return ExecutionResult(
                 success=False,
                 output="",
-                error=f"Unknown tool: {tool_name}",
+                error=f"Missing required argument {e}. Available: {list(arguments.keys())}",
             )
 
     async def cleanup_idle_sessions(self):

@@ -1310,11 +1310,22 @@ Always prefer running actual code over mental math or approximations!
                 tool_name = tool_call.function.name
                 try:
                     raw_args = tool_call.function.arguments
+                    # Debug: log raw arguments
+                    if raw_args:
+                        print(f"{C.MAGENTA}[tools]{C.RESET} Raw args type: {type(raw_args).__name__}, len: {len(raw_args) if raw_args else 0}")
+                        # Log first 200 chars to avoid spam
+                        preview = raw_args[:200] + "..." if len(raw_args) > 200 else raw_args
+                        print(f"{C.MAGENTA}[tools]{C.RESET} Raw args preview: {preview}")
+                    else:
+                        print(f"{C.MAGENTA}[tools]{C.RESET} {C.RED}WARNING: raw_args is empty/None{C.RESET}")
+
                     arguments = json.loads(raw_args) if raw_args else {}
-                except (json.JSONDecodeError, TypeError):
+                except (json.JSONDecodeError, TypeError) as e:
+                    print(f"{C.MAGENTA}[tools]{C.RESET} {C.RED}JSON parse error: {e}{C.RESET}")
+                    print(f"{C.MAGENTA}[tools]{C.RESET} {C.RED}Raw value: {repr(raw_args)[:500]}{C.RESET}")
                     arguments = {}
 
-                print(f"{C.MAGENTA}[tools]{C.RESET} Executing: {C.CYAN}{tool_name}{C.RESET}")
+                print(f"{C.MAGENTA}[tools]{C.RESET} Executing: {C.CYAN}{tool_name}{C.RESET} with {len(arguments)} args: {list(arguments.keys())}")
 
                 # Get friendly status for this tool
                 emoji, action = tool_status.get(tool_name, ("⚙️", "Working"))
