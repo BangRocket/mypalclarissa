@@ -1242,6 +1242,10 @@ When asked "What's 2^100?", use `execute_python` with `print(2**100)` instead of
                         username="Clara",
                         is_bot=True,
                     )
+                # Record for organic contextual reply detection
+                self.organic_manager.record_bot_message(
+                    message.channel.id, full_response
+                )
 
         except Exception as e:
             print(f"{C.RED}[error]{C.RESET} Generating response: {e}")
@@ -1937,33 +1941,39 @@ When asked "What's 2^100?", use `execute_python` with `print(2**100)` instead of
 
         while not self.is_closed():
             if self.organic_manager.pending_evaluation:
-                channel_id = self.organic_manager.pending_evaluation.pop()
+                # Pop one channel_id -> trigger_reason pair
+                channel_id, trigger_reason = self.organic_manager.pending_evaluation.popitem()
                 channel = self.get_channel(channel_id)
                 if channel:
                     try:
-                        await self._evaluate_organic_response(channel)
+                        await self._evaluate_organic_response(channel, trigger_reason)
                     except Exception as e:
                         print(f"[organic] Evaluation error: {e}")
                         import traceback
                         traceback.print_exc()
 
-            await asyncio.sleep(5)  # Check every 5 seconds
+            await asyncio.sleep(3)  # Check every 3 seconds (more responsive)
 
-    async def _evaluate_organic_response(self, channel):
+    async def _evaluate_organic_response(self, channel, trigger_reason: str = "unknown"):
         """Evaluate and potentially send organic response."""
         channel_id = channel.id
         channel_name = getattr(channel, "name", "DM")
 
+        # Contextual replies bypass cooldown (someone responding to Flo)
+        bypass_cooldown = trigger_reason == "contextual_reply"
+        if bypass_cooldown:
+            print(f"[organic] #{channel_name}: contextual reply detected, bypassing cooldown")
+
         # Rate limit check
         can_respond, limit_reason = self.organic_manager.limiter.can_respond(
-            channel_id
+            channel_id, bypass_cooldown=bypass_cooldown
         )
         if not can_respond:
             print(f"[organic] Skipping #{channel_name}: {limit_reason}")
             return
 
-        # Quiet hours check
-        if self.organic_manager.is_quiet_hours():
+        # Quiet hours check (but contextual replies still go through)
+        if self.organic_manager.is_quiet_hours() and not bypass_cooldown:
             print(f"[organic] Skipping #{channel_name}: quiet hours")
             return
 
@@ -2012,13 +2022,17 @@ When asked "What's 2^100?", use `execute_python` with `print(2**100)` instead of
         )
 
         guild_id = str(channel.guild.id) if channel.guild else None
-        trigger_reason = "evaluation"  # Could track actual trigger from record_message
 
         if should_send:
             draft = result["draft_response"]
             await channel.send(draft)
             self.organic_manager.limiter.record_response(channel_id)
-            print(f"[organic] Sent response to #{channel_name}")
+            # Record what Flo said for contextual reply detection
+            self.organic_manager.record_bot_message(channel_id, draft)
+            print(f"[organic] Sent response to #{channel_name}: {draft[:50]}...")
+
+        # Record that we evaluated (for eval cooldown)
+        self.organic_manager.record_evaluation(channel_id)
 
         # Log to database
         self.organic_manager.log_evaluation(
