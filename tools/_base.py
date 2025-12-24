@@ -1,4 +1,4 @@
-"""Base classes for the Clara tool system.
+"""Base classes for the Clarissa tool system.
 
 This module defines the core dataclasses used throughout the tool system:
 - ToolDef: Definition of a single tool

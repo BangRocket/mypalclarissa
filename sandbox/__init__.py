@@ -1,4 +1,4 @@
-"""Sandbox execution environments for Clara.
+"""Sandbox execution environments for Clarissa.
 
 Provides sandboxed code execution via Docker or E2B.
 """

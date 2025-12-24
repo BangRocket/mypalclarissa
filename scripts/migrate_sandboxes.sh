@@ -1,19 +1,19 @@
 #!/bin/bash
-# Migrate Clara sandbox containers to a remote server
+# Migrate Clarissa sandbox containers to a remote server
 # Usage: ./scripts/migrate_sandboxes.sh [remote_host]
 
 set -e
 
 REMOTE_HOST="${1:-clara}"
-EXPORT_DIR="/tmp/clara-sandboxes"
+EXPORT_DIR="/tmp/clarissa-sandboxes"
 
-echo "=== Clara Sandbox Migration ==="
+echo "=== Clarissa Sandbox Migration ==="
 
 # Find all clara sandbox containers
-CONTAINERS=$(docker ps -a --filter "name=clara-sandbox" --format "{{.Names}}")
+CONTAINERS=$(docker ps -a --filter "name=clarissa-sandbox" --format "{{.Names}}")
 
 if [ -z "$CONTAINERS" ]; then
-    echo "No clara-sandbox containers found."
+    echo "No clarissa-sandbox containers found."
     exit 0
 fi
 
@@ -29,7 +29,7 @@ for CONTAINER in $CONTAINERS; do
     echo "=== Processing: $CONTAINER ==="
 
     # Commit container to image
-    IMAGE_NAME="clara-sandbox-export:${CONTAINER#clara-sandbox-}"
+    IMAGE_NAME="clarissa-sandbox-export:${CONTAINER#clarissa-sandbox-}"
     echo "Committing to image: $IMAGE_NAME"
     docker commit "$CONTAINER" "$IMAGE_NAME"
 
@@ -53,7 +53,7 @@ echo ""
 echo "=== Loading on remote server ==="
 for CONTAINER in $CONTAINERS; do
     TAR_FILE="/tmp/${CONTAINER}.tar"
-    IMAGE_NAME="clara-sandbox-export:${CONTAINER#clara-sandbox-}"
+    IMAGE_NAME="clarissa-sandbox-export:${CONTAINER#clarissa-sandbox-}"
 
     echo "Loading $CONTAINER..."
     ssh "$REMOTE_HOST" "docker load -i $TAR_FILE"
@@ -66,7 +66,7 @@ done
 echo ""
 echo "=== Migration complete ==="
 echo "Containers on $REMOTE_HOST:"
-ssh "$REMOTE_HOST" "docker ps -a --filter 'name=clara-sandbox' --format 'table {{.Names}}\t{{.Status}}'"
+ssh "$REMOTE_HOST" "docker ps -a --filter 'name=clarissa-sandbox' --format 'table {{.Names}}\t{{.Status}}'"
 
 # Cleanup
 echo ""

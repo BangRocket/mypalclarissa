@@ -1,4 +1,4 @@
-"""Tool registry for the Clara tool system.
+"""Tool registry for the Clarissa tool system.
 
 The ToolRegistry is a singleton that manages all registered tools and provides
 methods for tool discovery, filtering, and execution.
@@ -13,7 +13,7 @@ from ._base import ToolContext, ToolDef
 
 
 class ToolRegistry:
-    """Central registry for all Clara tools.
+    """Central registry for all Clarissa tools.
 
     This is a singleton class that manages tool registration, discovery,
     and execution. Tools are registered with metadata including platform

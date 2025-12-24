@@ -1,4 +1,4 @@
-"""Memory management for Clara platform.
+"""Memory management for Clarissa platform.
 
 Provides the MemoryManager singleton that handles:
 - Thread/message persistence
@@ -128,7 +128,7 @@ def load_initial_profile(user_id: str) -> None:
 
 
 class MemoryManager:
-    """Central orchestrator for Clara's memory system.
+    """Central orchestrator for Clarissa's memory system.
 
     Handles:
     - Thread and message persistence
@@ -408,7 +408,7 @@ class MemoryManager:
             project_id: Project context
             recent_msgs: Recent message history
             user_message: Current user message
-            assistant_reply: Clara's response
+            assistant_reply: Clarissa's response
             participants: List of {"id": str, "name": str} for people mentioned
         """
         from config.mem0 import MEM0

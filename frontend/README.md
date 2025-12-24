@@ -1,6 +1,6 @@
-# MyPalClara Frontend
+# MyPalClarissa Frontend
 
-Next.js frontend for MyPalClara, built with [assistant-ui](https://github.com/Yonom/assistant-ui).
+Next.js frontend for MyPalClarissa, built with [assistant-ui](https://github.com/Yonom/assistant-ui).
 
 ## Getting Started
 

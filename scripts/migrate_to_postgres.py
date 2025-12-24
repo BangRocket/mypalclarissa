@@ -194,7 +194,7 @@ def migrate_qdrant_to_pgvector():
 
     # Check collection exists
     try:
-        collection_info = qdrant_client.get_collection("mypalclara_memories")
+        collection_info = qdrant_client.get_collection("mypalclarissa_memories")
         print(f"[migrate] Found {collection_info.points_count} vectors in Qdrant")
     except Exception as e:
         print(f"[ERROR] Could not read Qdrant collection: {e}")
@@ -206,7 +206,7 @@ def migrate_qdrant_to_pgvector():
     offset = None
     while True:
         result = qdrant_client.scroll(
-            collection_name="mypalclara_memories",
+            collection_name="mypalclarissa_memories",
             limit=100,
             offset=offset,
             with_vectors=True,

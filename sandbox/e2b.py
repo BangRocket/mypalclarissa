@@ -1,5 +1,5 @@
 """
-E2B Code Interpreter integration for Clara.
+E2B Code Interpreter integration for Clarissa.
 
 Provides sandboxed code execution capabilities via E2B's cloud sandboxes.
 Supports Python code execution with file operations and package installation.

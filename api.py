@@ -1,4 +1,4 @@
-"""FastAPI backend for MyPalClara assistant."""
+"""FastAPI backend for MyPalClarissa assistant."""
 from __future__ import annotations
 
 import os
@@ -13,14 +13,14 @@ from dotenv import load_dotenv
 
 from db import SessionLocal
 from db.models import Project, Session, Message
-from clara_core import init_platform, MemoryManager
+from clarissa_core import init_platform, MemoryManager
 
 load_dotenv()
 
 USER_ID = os.getenv("USER_ID", "demo-user")
 DEFAULT_PROJECT = os.getenv("DEFAULT_PROJECT", "Default Project")
 
-app = FastAPI(title="MyPalClara API")
+app = FastAPI(title="MyPalClarissa API")
 
 
 @app.exception_handler(RequestValidationError)
@@ -102,7 +102,7 @@ def startup():
     global mm
     print("[api] Starting up...")
 
-    # Initialize the Clara platform (DB, LLM, MemoryManager singleton)
+    # Initialize the Clarissa platform (DB, LLM, MemoryManager singleton)
     init_platform()
 
     # Get the singleton for backward compatibility
@@ -567,13 +567,13 @@ def health():
 @app.get("/version")
 def version():
     """Get platform version information."""
-    from clara_core import __version__, get_version
+    from clarissa_core import __version__, get_version
     return {
         "version": get_version(),
-        "platform": "mypalclara",
+        "platform": "mypalclarissa",
         "components": {
             "api": __version__,
-            "clara_core": __version__,
+            "clarissa_core": __version__,
         }
     }
 

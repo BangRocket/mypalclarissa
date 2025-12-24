@@ -1,4 +1,4 @@
-"""Configuration modules for Clara.
+"""Configuration modules for Clarissa.
 
 Submodules:
 - config.bot: Bot personality and name configuration

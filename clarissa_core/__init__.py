@@ -1,13 +1,13 @@
-"""Clara Core - Shared infrastructure for the Clara platform.
+"""Clarissa Core - Shared infrastructure for the Clarissa platform.
 
-This package provides the common components used by all Clara platform services:
+This package provides the common components used by all Clarissa platform services:
 - API server
 - Discord bot
 - Email monitor
 - Future platforms (Slack, Telegram, etc.)
 
 Usage:
-    from clara_core import init_platform, MemoryManager, ToolRegistry
+    from clarissa_core import init_platform, MemoryManager, ToolRegistry
 
     # Initialize shared infrastructure (call once at startup)
     init_platform()
@@ -25,11 +25,11 @@ __version__ = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "
 
 
 def get_version() -> str:
-    """Get the current Clara platform version."""
+    """Get the current Clarissa platform version."""
     return __version__
 
-from clara_core.config import get_config, init_platform
-from clara_core.llm import (
+from clarissa_core.config import get_config, init_platform
+from clarissa_core.llm import (
     ModelTier,
     make_llm,
     make_llm_streaming,
@@ -39,9 +39,9 @@ from clara_core.llm import (
     get_tier_info,
     DEFAULT_TIER,
 )
-from clara_core.memory import MemoryManager, load_initial_profile
-from clara_core.platform import PlatformAdapter, PlatformContext, PlatformMessage
-from clara_core.tools import ToolRegistry
+from clarissa_core.memory import MemoryManager, load_initial_profile
+from clarissa_core.platform import PlatformAdapter, PlatformContext, PlatformMessage
+from clarissa_core.tools import ToolRegistry
 
 __all__ = [
     # Version

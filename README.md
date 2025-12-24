@@ -1,6 +1,6 @@
-# MyPalClara
+# MyPalClarissa
 
-AI assistant with session management and persistent memory. The assistant's name is Clara.
+AI assistant with session management and persistent memory. The assistant's name is Clarissa.
 
 ## Installation
 
@@ -42,7 +42,7 @@ docker-compose up
 
 ## Memory System
 
-MyPalClara uses [mem0](https://github.com/mem0ai/mem0) for memory management with:
+MyPalClarissa uses [mem0](https://github.com/mem0ai/mem0) for memory management with:
 
 - **Vector Store (Qdrant)**: Semantic search over memories
 - **Graph Store (Neo4j)**: Relationship tracking between entities

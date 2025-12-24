@@ -1,6 +1,6 @@
-"""Clara Tools System - Modular, reloadable tools with MCP support.
+"""Clarissa Tools System - Modular, reloadable tools with MCP support.
 
-This package provides the tool infrastructure for Clara:
+This package provides the tool infrastructure for Clarissa:
 - Modular tool definitions in separate files
 - Hot-reloadable at runtime
 - MCP protocol support for external tool exposure

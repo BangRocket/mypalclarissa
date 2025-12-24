@@ -1,7 +1,7 @@
 """
-File storage for Clara.
+File storage for Clarissa.
 
-Provides managed storage for Clara to save and retrieve files.
+Provides managed storage for Clarissa to save and retrieve files.
 Supports both local filesystem and S3-compatible storage (Wasabi, AWS, etc.).
 Files can come from Discord attachments or E2B sandbox.
 """
@@ -18,8 +18,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Configuration
-LOCAL_FILES_DIR = Path(os.getenv("CLARA_FILES_DIR", "./clara_files"))
-MAX_FILE_SIZE = int(os.getenv("CLARA_MAX_FILE_SIZE", str(50 * 1024 * 1024)))  # 50MB default
+LOCAL_FILES_DIR = Path(os.getenv("CLARISSA_FILES_DIR", "./clarissa_files"))
+MAX_FILE_SIZE = int(os.getenv("CLARISSA_MAX_FILE_SIZE", str(50 * 1024 * 1024)))  # 50MB default
 
 # S3 Configuration
 S3_ENABLED = os.getenv("S3_ENABLED", "false").lower() == "true"

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Sync MyPalClara data to remote server
+# Sync MyPalClarissa data to remote server
 # Usage: ./scripts/sync_to_remote.sh [user@host] [remote_path]
 
 set -e
 
 REMOTE_HOST="${1:-clara}"
-REMOTE_PATH="${2:-~/mypalclara}"
+REMOTE_PATH="${2:-~/mypalclarissa}"
 LOCAL_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "=== MyPalClara Remote Sync ==="
+echo "=== MyPalClarissa Remote Sync ==="
 echo "Local:  $LOCAL_PATH"
 echo "Remote: $REMOTE_HOST:$REMOTE_PATH"
 echo ""
@@ -40,10 +40,10 @@ if [ -d "$LOCAL_PATH/qdrant_data" ]; then
     rsync -avz --progress "$LOCAL_PATH/qdrant_data/" "$REMOTE_HOST:$REMOTE_PATH/qdrant_data/"
 fi
 
-# Clara local files
-if [ -d "$LOCAL_PATH/clara_files" ]; then
-    echo "Syncing clara_files/..."
-    rsync -avz --progress "$LOCAL_PATH/clara_files/" "$REMOTE_HOST:$REMOTE_PATH/clara_files/"
+# Clarissa local files
+if [ -d "$LOCAL_PATH/clarissa_files" ]; then
+    echo "Syncing clarissa_files/..."
+    rsync -avz --progress "$LOCAL_PATH/clarissa_files/" "$REMOTE_HOST:$REMOTE_PATH/clarissa_files/"
 fi
 
 # Sync code (optional - uncomment if needed)

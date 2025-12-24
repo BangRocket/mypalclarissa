@@ -1,4 +1,4 @@
-# Backend Dockerfile for MyPalClara API
+# Backend Dockerfile for MyPalClarissa API
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN poetry install --only main --no-interaction --no-ansi
 
 # Copy application code
 COPY *.py ./
-COPY clara_core/ ./clara_core/
+COPY clarissa_core/ ./clarissa_core/
 COPY config/ ./config/
 COPY db/ ./db/
 COPY sandbox/ ./sandbox/

@@ -1,4 +1,4 @@
-"""LLM backend abstraction for Clara platform.
+"""LLM backend abstraction for Clarissa platform.
 
 Provides unified interface to multiple LLM providers:
 - OpenRouter (default)
@@ -70,7 +70,7 @@ def _get_openrouter_client() -> OpenAI:
             raise RuntimeError("OPENROUTER_API_KEY is not set")
 
         site = os.getenv("OPENROUTER_SITE", "http://localhost:3000")
-        title = os.getenv("OPENROUTER_TITLE", "MyPalClara")
+        title = os.getenv("OPENROUTER_TITLE", "MyPalClarissa")
 
         _openrouter_client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -157,7 +157,7 @@ def _get_openai_tool_client() -> OpenAI:
         # Add OpenRouter headers if using OpenRouter
         if "openrouter.ai" in base_url:
             site = os.getenv("OPENROUTER_SITE", "http://localhost:3000")
-            title = os.getenv("OPENROUTER_TITLE", "MyPalClara")
+            title = os.getenv("OPENROUTER_TITLE", "MyPalClarissa")
             client_kwargs["default_headers"] = {
                 "HTTP-Referer": site,
                 "X-Title": title,

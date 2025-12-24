@@ -1,5 +1,5 @@
 """
-Docker-based code execution for Clara.
+Docker-based code execution for Clarissa.
 
 Provides sandboxed code execution via local Docker containers.
 Drop-in replacement for e2b_tools.py with identical interface.
@@ -320,7 +320,7 @@ class DockerSandboxManager:
         """Generate container name for a user."""
         # Sanitize user_id for container name
         safe_id = "".join(c if c.isalnum() else "-" for c in user_id)
-        return f"clara-sandbox-{safe_id}"
+        return f"clarissa-sandbox-{safe_id}"
 
     async def get_sandbox(self, user_id: str) -> Container | None:
         """Get or create a container for a user."""

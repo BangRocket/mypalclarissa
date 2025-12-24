@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MyPalClara is a personal AI assistant with session management and persistent memory (via mem0). The assistant's name is Clara. It uses a FastAPI backend with SQLite/PostgreSQL storage and a Next.js frontend built with assistant-ui.
+MyPalClarissa is a personal AI assistant with session management and persistent memory (via mem0). The assistant's name is Clarissa. It uses a FastAPI backend with SQLite/PostgreSQL storage and a Next.js frontend built with assistant-ui.
 
 ## Development Commands
 
@@ -54,7 +54,7 @@ poetry run python clear_dbs.py --user <id> # Clear specific user
 - `api.py` - FastAPI server with thread management, chat, and memory endpoints
 - `discord_bot.py` - Discord bot with multi-user support, reply chains, and streaming responses
 - `discord_monitor.py` - Web dashboard for monitoring Discord bot status and activity
-- `memory_manager.py` - Core orchestrator: session handling, mem0 integration, prompt building with Clara's persona
+- `memory_manager.py` - Core orchestrator: session handling, mem0 integration, prompt building with Clarissa's persona
 - `llm_backends.py` - LLM provider abstraction (OpenRouter, NanoGPT, custom OpenAI) - both streaming and non-streaming
 - `mem0_config.py` - mem0 memory system configuration (Qdrant/pgvector for vectors, OpenAI embeddings)
 - `models.py` - SQLAlchemy models: Project, Session, Message, ChannelSummary
@@ -71,7 +71,7 @@ poetry run python clear_dbs.py --user <id> # Clear specific user
 
 ### Data Flow
 1. Frontend sends chat request to `/api/chat` route with messages
-2. Route fetches enriched context from backend `/api/context` (includes mem0 memories, session context, Clara persona)
+2. Route fetches enriched context from backend `/api/context` (includes mem0 memories, session context, Clarissa persona)
 3. Route streams LLM response directly to frontend using AI SDK's `streamText`
 4. On completion, stores messages via backend `/api/store` (triggers mem0 memory extraction)
 
@@ -196,9 +196,9 @@ export TAVILY_API_KEY="your-tavily-key"
 ```
 
 ### Local File Storage (Discord Bot)
-Clara can save files locally that persist across sessions:
-- `CLARA_FILES_DIR` - Directory for local file storage (default: ./clara_files)
-- `CLARA_MAX_FILE_SIZE` - Max file size in bytes (default: 50MB)
+Clarissa can save files locally that persist across sessions:
+- `CLARISSA_FILES_DIR` - Directory for local file storage (default: ./clarissa_files)
+- `CLARISSA_MAX_FILE_SIZE` - Max file size in bytes (default: 50MB)
 
 Files are organized per-user. Discord attachments are automatically saved locally.
 
@@ -212,7 +212,7 @@ Files are organized per-user. Discord attachments are automatically saved locall
 - `send_local_file` - Send a saved file to Discord chat
 
 ### GitHub Integration (Discord Bot)
-Clara can interact with GitHub repositories, issues, PRs, and workflows:
+Clarissa can interact with GitHub repositories, issues, PRs, and workflows:
 - `GITHUB_TOKEN` - GitHub Personal Access Token (required for GitHub tools)
 
 **GitHub Tools** (requires GITHUB_TOKEN):
@@ -228,7 +228,7 @@ Clara can interact with GitHub repositories, issues, PRs, and workflows:
 - And many more (search users, branches, releases, tags, notifications, stars)
 
 ### Azure DevOps Integration (Discord Bot)
-Clara can interact with Azure DevOps projects, repos, work items, and pipelines:
+Clarissa can interact with Azure DevOps projects, repos, work items, and pipelines:
 - `AZURE_DEVOPS_ORG` - Azure DevOps organization name or URL (required)
 - `AZURE_DEVOPS_PAT` - Azure DevOps Personal Access Token (required)
 

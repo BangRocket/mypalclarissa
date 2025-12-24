@@ -27,7 +27,7 @@ load_dotenv()
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from clara_core import make_llm
+from clarissa_core import make_llm
 
 # Namespaces
 NAMESPACES = [
@@ -295,7 +295,7 @@ def group_memories_for_graph(memories: dict) -> list[dict]:
     style_items = memories.get("interaction_style", [])
     if style_items:
         facts = [item["value"] for item in style_items]
-        content = "My preferences for how Clara should interact with me: " + ". ".join(facts)
+        content = "My preferences for how Clarissa should interact with me: " + ". ".join(facts)
         groups.append({
             "namespace": "interaction_style",
             "category": "preferences",

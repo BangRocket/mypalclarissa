@@ -26,7 +26,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 import { threadListAdapter, createHistoryAdapter } from "@/lib/thread-adapter";
 
 // Track current thread ID for chat requests via sessionStorage
-const THREAD_ID_KEY = "clara-current-thread-id";
+const THREAD_ID_KEY = "clarissa-current-thread-id";
 
 function setCurrentThreadId(id: string | undefined) {
   if (typeof window !== "undefined") {
@@ -73,10 +73,10 @@ function ThreadHeader() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
 
-  const title = threadListItem?.title || "Clara";
+  const title = threadListItem?.title || "Clarissa";
 
   const startEdit = () => {
-    setEditTitle(title === "Clara" ? "" : title);
+    setEditTitle(title === "Clarissa" ? "" : title);
     setIsEditing(true);
   };
 

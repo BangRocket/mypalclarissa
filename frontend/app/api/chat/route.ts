@@ -23,7 +23,7 @@ const openrouter = createOpenAI({
   apiKey: process.env.OPENROUTER_API_KEY!,
   headers: {
     "HTTP-Referer": process.env.OPENROUTER_SITE || "http://localhost:3000",
-    "X-Title": process.env.OPENROUTER_TITLE || "MyPalClara",
+    "X-Title": process.env.OPENROUTER_TITLE || "MyPalClarissa",
   },
 });
 

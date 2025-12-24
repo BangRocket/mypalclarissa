@@ -1,5 +1,5 @@
 """
-Email monitoring module for Clara Discord Bot.
+Email monitoring module for Clarissa Discord Bot.
 
 Provides:
 - Background task that checks for new emails every 60 seconds
@@ -21,23 +21,23 @@ from dataclasses import dataclass
 import os
 
 from config.bot import BOT_NAME
-from clara_core import make_llm
+from clarissa_core import make_llm
 
 # Email configuration - loaded from environment or hardcoded for now
-EMAIL_ADDRESS = os.environ.get("CLARA_EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.environ.get("CLARA_EMAIL_PASSWORD")
-IMAP_SERVER = os.getenv("CLARA_IMAP_SERVER", "imap.titan.email")
-IMAP_PORT = int(os.getenv("CLARA_IMAP_PORT", "993"))
+EMAIL_ADDRESS = os.environ.get("CLARISSA_EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("CLARISSA_EMAIL_PASSWORD")
+IMAP_SERVER = os.getenv("CLARISSA_IMAP_SERVER", "imap.titan.email")
+IMAP_PORT = int(os.getenv("CLARISSA_IMAP_PORT", "993"))
 
 # Discord user ID to notify (default: None if not set)
-_notify_user_env = os.getenv("CLARA_EMAIL_NOTIFY_USER", "").strip()
+_notify_user_env = os.getenv("CLARISSA_EMAIL_NOTIFY_USER", "").strip()
 NOTIFY_USER_ID = int(_notify_user_env) if _notify_user_env else None
 
 # Whether to send Discord notifications (default: off)
-NOTIFY_ENABLED = os.getenv("CLARA_EMAIL_NOTIFY", "false").lower() == "true"
+NOTIFY_ENABLED = os.getenv("CLARISSA_EMAIL_NOTIFY", "false").lower() == "true"
 
 # Check interval in seconds
-CHECK_INTERVAL = int(os.getenv("CLARA_EMAIL_CHECK_INTERVAL", "60"))
+CHECK_INTERVAL = int(os.getenv("CLARISSA_EMAIL_CHECK_INTERVAL", "60"))
 
 
 @dataclass
@@ -484,8 +484,8 @@ If you do respond, write as {BOT_NAME} - be helpful, friendly, and concise. Sign
 def send_email_response(to_addr: str, subject: str, body: str) -> tuple[bool, str]:
     """Send an email response."""
     try:
-        smtp_server = os.getenv("CLARA_SMTP_SERVER", "smtp.titan.email")
-        smtp_port = int(os.getenv("CLARA_SMTP_PORT", "465"))
+        smtp_server = os.getenv("CLARISSA_SMTP_SERVER", "smtp.titan.email")
+        smtp_port = int(os.getenv("CLARISSA_SMTP_PORT", "465"))
 
         # Add Re: prefix if not already there
         if not subject.lower().startswith("re:"):
@@ -513,7 +513,7 @@ EMAIL_TOOLS = [
         "type": "function",
         "function": {
             "name": "check_email",
-            "description": "Check Clara's email inbox (clara@jorsh.net). Returns recent emails with sender, subject, and date. Use this when asked about email or to check for new messages.",
+            "description": "Check Clarissa's email inbox (clarissa@jorsh.net). Returns recent emails with sender, subject, and date. Use this when asked about email or to check for new messages.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -534,7 +534,7 @@ EMAIL_TOOLS = [
         "type": "function",
         "function": {
             "name": "send_email",
-            "description": "Send an email from Clara's email address (clara@jorsh.net).",
+            "description": "Send an email from Clarissa's email address (clarissa@jorsh.net).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -561,7 +561,7 @@ EMAIL_TOOLS = [
 async def handle_email_tool(tool_name: str, arguments: dict) -> str:
     """Handle email tool calls."""
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        return "Error: Email not configured. CLARA_EMAIL_ADDRESS and CLARA_EMAIL_PASSWORD must be set."
+        return "Error: Email not configured. CLARISSA_EMAIL_ADDRESS and CLARISSA_EMAIL_PASSWORD must be set."
 
     monitor = get_email_monitor()
 
@@ -603,8 +603,8 @@ async def handle_email_tool(tool_name: str, arguments: dict) -> str:
         
         try:
             # SMTP settings for Titan
-            smtp_server = os.getenv("CLARA_SMTP_SERVER", "smtp.titan.email")
-            smtp_port = int(os.getenv("CLARA_SMTP_PORT", "465"))
+            smtp_server = os.getenv("CLARISSA_SMTP_SERVER", "smtp.titan.email")
+            smtp_port = int(os.getenv("CLARISSA_SMTP_PORT", "465"))
             
             msg = MIMEMultipart()
             msg["From"] = EMAIL_ADDRESS
@@ -630,7 +630,7 @@ async def email_check_loop(bot):
 
     For each new email:
     1. Fetches the full email content
-    2. Uses LLM to decide if Clara should respond
+    2. Uses LLM to decide if Clarissa should respond
     3. Sends a response if appropriate
     4. Notifies the user via Discord DM
 
@@ -639,16 +639,16 @@ async def email_check_loop(bot):
     await bot.wait_until_ready()
 
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        print("[email] Email monitoring DISABLED - CLARA_EMAIL_ADDRESS or CLARA_EMAIL_PASSWORD not set")
+        print("[email] Email monitoring DISABLED - CLARISSA_EMAIL_ADDRESS or CLARISSA_EMAIL_PASSWORD not set")
         return
 
     monitor = get_email_monitor()
     print(f"[email] Starting email monitor for {EMAIL_ADDRESS}")
-    print(f"[email] Auto-respond enabled - Clara will evaluate and respond to emails")
+    print(f"[email] Auto-respond enabled - Clarissa will evaluate and respond to emails")
     if NOTIFY_ENABLED:
         print(f"[email] Discord notifications ON - will notify user ID {NOTIFY_USER_ID}")
     else:
-        print(f"[email] Discord notifications OFF (set CLARA_EMAIL_NOTIFY=true to enable)")
+        print(f"[email] Discord notifications OFF (set CLARISSA_EMAIL_NOTIFY=true to enable)")
 
     while not bot.is_closed():
         try:
@@ -690,7 +690,7 @@ async def email_check_loop(bot):
                     evaluation = evaluate_and_respond(full_email)
 
                     if evaluation["should_respond"]:
-                        print(f"[email] Clara decided to respond: {evaluation['reason']}")
+                        print(f"[email] Clarissa decided to respond: {evaluation['reason']}")
 
                         # Extract reply-to address (use From if no Reply-To)
                         reply_to = full_email.from_addr
@@ -710,10 +710,10 @@ async def email_check_loop(bot):
                             print(f"[email] Response sent to {reply_to}")
                             if user:
                                 await user.send(
-                                    f"📬 **New Email - Clara Responded!**\n"
+                                    f"📬 **New Email - Clarissa Responded!**\n"
                                     f"**From:** {full_email.from_addr}\n"
                                     f"**Subject:** {full_email.subject}\n\n"
-                                    f"**Clara's Response:**\n{evaluation['response'][:1500]}"
+                                    f"**Clarissa's Response:**\n{evaluation['response'][:1500]}"
                                 )
                         else:
                             print(f"[email] Failed to send response: {send_result}")
@@ -723,10 +723,10 @@ async def email_check_loop(bot):
                                     f"**From:** {full_email.from_addr}\n"
                                     f"**Subject:** {full_email.subject}\n"
                                     f"**Error:** {send_result}\n\n"
-                                    f"**Clara wanted to say:**\n{evaluation['response'][:1000]}"
+                                    f"**Clarissa wanted to say:**\n{evaluation['response'][:1000]}"
                                 )
                     else:
-                        print(f"[email] Clara decided not to respond: {evaluation['reason']}")
+                        print(f"[email] Clarissa decided not to respond: {evaluation['reason']}")
                         if user:
                             # Truncate body preview
                             body_preview = full_email.body[:500] + "..." if len(full_email.body) > 500 else full_email.body

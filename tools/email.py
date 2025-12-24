@@ -1,9 +1,9 @@
-"""Email tools for Clara.
+"""Email tools for Clarissa.
 
 Provides email checking and sending capabilities.
 Tools: check_email, send_email
 
-Requires: CLARA_EMAIL_ADDRESS, CLARA_EMAIL_PASSWORD env vars
+Requires: CLARISSA_EMAIL_ADDRESS, CLARISSA_EMAIL_PASSWORD env vars
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ You can check, search, and send emails.
 """.strip()
 
 # Configuration
-EMAIL_ADDRESS = os.getenv("CLARA_EMAIL_ADDRESS", "")
-EMAIL_PASSWORD = os.getenv("CLARA_EMAIL_PASSWORD", "")
+EMAIL_ADDRESS = os.getenv("CLARISSA_EMAIL_ADDRESS", "")
+EMAIL_PASSWORD = os.getenv("CLARISSA_EMAIL_PASSWORD", "")
 
 
 def is_configured() -> bool:
@@ -58,7 +58,7 @@ def _get_monitor():
 async def check_email(args: dict[str, Any], ctx: ToolContext) -> str:
     """Check email inbox."""
     if not is_configured():
-        return "Error: Email not configured. CLARA_EMAIL_ADDRESS and CLARA_EMAIL_PASSWORD must be set."
+        return "Error: Email not configured. CLARISSA_EMAIL_ADDRESS and CLARISSA_EMAIL_PASSWORD must be set."
 
     monitor = _get_monitor()
     unread_only = args.get("unread_only", False)
@@ -96,7 +96,7 @@ async def check_email(args: dict[str, Any], ctx: ToolContext) -> str:
 async def search_email(args: dict[str, Any], ctx: ToolContext) -> str:
     """Search emails with various criteria."""
     if not is_configured():
-        return "Error: Email not configured. CLARA_EMAIL_ADDRESS and CLARA_EMAIL_PASSWORD must be set."
+        return "Error: Email not configured. CLARISSA_EMAIL_ADDRESS and CLARISSA_EMAIL_PASSWORD must be set."
 
     query = args.get("query")
     from_addr = args.get("from")
@@ -143,7 +143,7 @@ async def search_email(args: dict[str, Any], ctx: ToolContext) -> str:
 async def send_email(args: dict[str, Any], ctx: ToolContext) -> str:
     """Send an email."""
     if not is_configured():
-        return "Error: Email not configured. CLARA_EMAIL_ADDRESS and CLARA_EMAIL_PASSWORD must be set."
+        return "Error: Email not configured. CLARISSA_EMAIL_ADDRESS and CLARISSA_EMAIL_PASSWORD must be set."
 
     to_addr = args.get("to", "")
     subject = args.get("subject", "")
@@ -170,7 +170,7 @@ TOOLS = [
     ToolDef(
         name="check_email",
         description=(
-            "Check Clara's email inbox. Returns recent emails with sender, "
+            "Check Clarissa's email inbox. Returns recent emails with sender, "
             "subject, and date. Use this when asked about email or to check "
             "for new messages."
         ),
@@ -233,7 +233,7 @@ TOOLS = [
     ),
     ToolDef(
         name="send_email",
-        description="Send an email from Clara's email address.",
+        description="Send an email from Clarissa's email address.",
         parameters={
             "type": "object",
             "properties": {

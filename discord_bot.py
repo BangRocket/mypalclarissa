@@ -1,7 +1,7 @@
 """
-Discord bot for Clara - Multi-user AI assistant with memory.
+Discord bot for Clarissa - Multi-user AI assistant with memory.
 
-Inspired by llmcord's clean design, but integrates directly with Clara's
+Inspired by llmcord's clean design, but integrates directly with Clarissa's
 MemoryManager for full mem0 memory support.
 
 Usage:
@@ -53,8 +53,8 @@ from config.logging import init_logging, get_logger, set_db_session_factory
 # Import modular tools system for GitHub, ADO, etc.
 from tools import init_tools, get_registry, ToolContext
 
-# Import from clara_core for unified platform
-from clara_core import (
+# Import from clarissa_core for unified platform
+from clarissa_core import (
     init_platform,
     MemoryManager,
     make_llm,
@@ -132,7 +132,7 @@ DOCKER_ENABLED = True  # Docker sandbox is always available if Docker is running
 MAX_TOOL_ITERATIONS = 75  # Max tool call rounds per response
 
 # Auto-continue configuration
-# When Clara ends with a permission-seeking question, auto-continue without waiting
+# When Clarissa ends with a permission-seeking question, auto-continue without waiting
 AUTO_CONTINUE_ENABLED = os.getenv("DISCORD_AUTO_CONTINUE", "true").lower() == "true"
 AUTO_CONTINUE_MAX = int(os.getenv("DISCORD_AUTO_CONTINUE_MAX", "3"))  # Max auto-continues per conversation
 
@@ -186,7 +186,7 @@ def _should_auto_continue(response: str) -> bool:
 
 
 def _get_current_time() -> str:
-    """Get the current time formatted for Clara's context."""
+    """Get the current time formatted for Clarissa's context."""
     from zoneinfo import ZoneInfo
 
     try:
@@ -482,7 +482,7 @@ class BotMonitor:
 
     def get_stats(self):
         """Get current statistics."""
-        from clara_core import __version__
+        from clarissa_core import __version__
 
         uptime = None
         if self.start_time:
@@ -509,8 +509,8 @@ class BotMonitor:
 monitor = BotMonitor()
 
 
-class ClaraDiscordBot(discord.Client):
-    """Discord bot that integrates Clara's memory-enhanced AI."""
+class ClarissaDiscordBot(discord.Client):
+    """Discord bot that integrates Clarissa's memory-enhanced AI."""
 
     def __init__(self):
         intents = discord.Intents.default()
@@ -524,7 +524,7 @@ class ClaraDiscordBot(discord.Client):
         self.msg_cache: dict[int, CachedMessage] = {}
         self.cache_lock = asyncio.Lock()
 
-        # Initialize Clara's unified platform (DB, LLM, MemoryManager, ToolRegistry)
+        # Initialize Clarissa's unified platform (DB, LLM, MemoryManager, ToolRegistry)
         init_platform()
         self.mm = MemoryManager.get_instance()
 
@@ -895,7 +895,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                     raw_content += "".join(attachment_text)
                     logger.debug(f" Added {len(attachments)} file(s) to message")
 
-                # For channels, prefix with username so Clara knows who's speaking
+                # For channels, prefix with username so Clarissa knows who's speaking
                 if not is_dm:
                     display_name = message.author.display_name
                     user_content = f"[{display_name}]: {raw_content}"
@@ -922,7 +922,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                 finally:
                     db.close()
 
-                # Build prompt with Clara's persona
+                # Build prompt with Clarissa's persona
                 prompt_messages = self.mm.build_prompt(
                     user_mems,
                     proj_mems,
@@ -935,7 +935,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                 discord_context = self._build_discord_context(
                     message, user_mems, proj_mems, is_dm
                 )
-                # Insert as second system message (after Clara's persona)
+                # Insert as second system message (after Clarissa's persona)
                 system_msg = {"role": "system", "content": discord_context}
                 prompt_messages.insert(1, system_msg)
 
@@ -977,7 +977,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                     message, prompt_messages, tier_override
                 )
 
-                # Store in Clara's memory system
+                # Store in Clarissa's memory system
                 # Use thread_owner for message storage, user_id for memories
                 if response:
                     await self._store_exchange(
@@ -997,10 +997,10 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                         response[:200] + "..." if len(response) > 200 else response
                     )
                     monitor.log(
-                        "response", "Clara", response_preview, guild_name, channel_name
+                        "response", "Clarissa", response_preview, guild_name, channel_name
                     )
 
-                    # Check for auto-continue (Clara asking permission to proceed)
+                    # Check for auto-continue (Clarissa asking permission to proceed)
                     if (
                         _should_auto_continue(response)
                         and auto_continue_count < AUTO_CONTINUE_MAX
@@ -1231,7 +1231,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
         # Format messages for summarization
         formatted = []
         for msg in messages:
-            role = "Clara" if msg.is_bot else msg.username
+            role = "Clarissa" if msg.is_bot else msg.username
             content = msg.content[:500]  # truncate long messages
             formatted.append(f"{role}: {content}")
 
@@ -1454,7 +1454,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
                         self.msg_cache[response_msg.id] = CachedMessage(
                             content=full_response,
                             user_id=str(self.user.id) if self.user else "",
-                            username="Clara",
+                            username="Clarissa",
                             is_bot=True,
                         )
 
@@ -1775,7 +1775,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
         )
 
         def final_call():
-            from clara_core.llm import TOOL_FORMAT, _convert_messages_to_claude_format
+            from clarissa_core.llm import TOOL_FORMAT, _convert_messages_to_claude_format
 
             llm = make_llm()  # Use simple LLM for final response
             # Convert messages if using Claude format
@@ -2034,7 +2034,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
 
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
                 author = msg.author.display_name
-                is_bot = " [Clara]" if msg.author == self.user else ""
+                is_bot = " [Clarissa]" if msg.author == self.user else ""
                 # Truncate long messages
                 text = (
                     msg.content[:300] + "..." if len(msg.content) > 300 else msg.content
@@ -2154,7 +2154,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
         cleaned = re.sub(fallback_pattern, replace_file, cleaned, flags=re.DOTALL | re.IGNORECASE)
 
         # Last resort: <<<file:filename>>> followed by content until next <<< or end of major section
-        # This catches cases where Clara forgets the closing tag entirely
+        # This catches cases where Clarissa forgets the closing tag entirely
         if "<<<file:" in cleaned.lower() or "<<< file:" in cleaned.lower():
             unclosed_pattern = r"<<<\s*file\s*:\s*([^>]+?)\s*>>>(.*?)(?=<<<|\Z)"
 
@@ -2222,7 +2222,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
         assistant_reply: str,
         participants: list[dict] | None = None,
     ):
-        """Store the exchange in Clara's memory system.
+        """Store the exchange in Clarissa's memory system.
 
         Args:
             thread_owner_id: ID for message storage (channel or DM owner)
@@ -2230,7 +2230,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
             project_id: Project ID for memory organization
             thread_id: Thread ID for message storage
             user_message: The user's message
-            assistant_reply: Clara's response
+            assistant_reply: Clarissa's response
             participants: List of {"id": str, "name": str} for people in the conversation
         """
         db = SessionLocal()
@@ -2270,7 +2270,7 @@ Note: Messages prefixed with [Username] are from other users. Address people by 
 
 # ============== FastAPI Monitor Dashboard ==============
 
-monitor_app = FastAPI(title="Clara Discord Monitor")
+monitor_app = FastAPI(title="Clarissa Discord Monitor")
 
 monitor_app.add_middleware(
     CORSMiddleware,
@@ -2295,11 +2295,11 @@ def get_guilds():
 @monitor_app.get("/api/version")
 def get_version():
     """Get platform version information."""
-    from clara_core import __version__
+    from clarissa_core import __version__
 
     return {
         "version": __version__,
-        "platform": "mypalclara",
+        "platform": "mypalclarissa",
         "component": "discord-bot",
     }
 
@@ -2319,7 +2319,7 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clara Discord Monitor</title>
+    <title>Clarissa Discord Monitor</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -2445,7 +2445,7 @@ DASHBOARD_HTML = """
     <div class="container">
         <h1>
             <span class="status"></span>
-            Clara Discord Monitor
+            Clarissa Discord Monitor
             <span class="uptime" id="uptime"></span>
         </h1>
         <div class="grid" id="stats"></div>
@@ -2572,7 +2572,7 @@ def dashboard():
 
 async def run_bot():
     """Run the Discord bot."""
-    bot = ClaraDiscordBot()
+    bot = ClarissaDiscordBot()
     await bot.start(BOT_TOKEN)
 
 
@@ -2598,7 +2598,7 @@ async def async_main():
         logger.info("Get your token from: https://discord.com/developers/applications")
         return
 
-    logger.info("Clara Discord Bot Starting")
+    logger.info("Clarissa Discord Bot Starting")
 
     config_logger.info(f"Max message chain: {MAX_MESSAGES}")
     if ALLOWED_CHANNELS:
@@ -2610,7 +2610,7 @@ async def async_main():
     config_logger.info(f"Allowed roles: {ALLOWED_ROLES or 'all'}")
 
     # Tool calling status check
-    from clara_core.llm import TOOL_FORMAT, TOOL_MODEL
+    from clarissa_core.llm import TOOL_FORMAT, TOOL_MODEL
 
     provider = os.getenv("LLM_PROVIDER", "openrouter").lower()
 

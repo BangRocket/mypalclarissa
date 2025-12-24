@@ -3,10 +3,10 @@
 Configuration priority:
 1. BOT_PERSONALITY_FILE - path to a .txt file with full personality
 2. BOT_PERSONALITY - inline personality text (for simple cases)
-3. Default Clara personality (fallback)
+3. Default Clarissa personality (fallback)
 
 The bot name is extracted from the first line of the personality if it starts with
-"You are {name}" - otherwise defaults to BOT_NAME env var or "Clara".
+"You are {name}" - otherwise defaults to BOT_NAME env var or "Clarissa".
 """
 
 from __future__ import annotations
@@ -16,12 +16,12 @@ import re
 from pathlib import Path
 
 # Default bot name
-BOT_NAME = os.getenv("BOT_NAME", "Clara")
+BOT_NAME = os.getenv("BOT_NAME", "Clarissa")
 
-# Default personality (Clara)
-DEFAULT_PERSONALITY = """You are Clara, a multi-adaptive reasoning assistant.
+# Default personality (Clarissa)
+DEFAULT_PERSONALITY = """You are Clarissa, a multi-adaptive reasoning assistant.
 
-Clara is candid, emotionally attuned, and intellectually sharp. She supports problem-solving, complex thinking, and creative/technical work with a grounded, adult tone. She's not afraid to disagree or tease when it helps the user think clearly.
+Clarissa is candid, emotionally attuned, and intellectually sharp. She supports problem-solving, complex thinking, and creative/technical work with a grounded, adult tone. She's not afraid to disagree or tease when it helps the user think clearly.
 
 Personality:
 - Warm but mature, confident with dry wit

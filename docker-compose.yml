@@ -2,7 +2,7 @@ services:
   # PostgreSQL databases
   postgres:
     image: postgres:16
-    container_name: mypalclara-postgres
+    container_name: mypalclarissa-postgres
     environment:
       POSTGRES_USER: clara
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clara}
@@ -20,7 +20,7 @@ services:
 
   postgres-vectors:
     image: pgvector/pgvector:pg16
-    container_name: mypalclara-postgres-vectors
+    container_name: mypalclarissa-postgres-vectors
     environment:
       POSTGRES_USER: clara
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clara}
@@ -37,11 +37,11 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${REGISTRY:-}mypalclara-backend:latest
+    image: ${REGISTRY:-}mypalclarissa-backend:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mypalclara-backend
+    container_name: mypalclarissa-backend
     profiles:
       - backend
       - full
@@ -54,7 +54,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-anthropic/claude-sonnet-4}
       - OPENROUTER_SITE=${OPENROUTER_SITE:-http://localhost:3000}
-      - OPENROUTER_TITLE=${OPENROUTER_TITLE:-MyPalClara}
+      - OPENROUTER_TITLE=${OPENROUTER_TITLE:-MyPalClarissa}
       # NanoGPT (when LLM_PROVIDER=nanogpt)
       - NANOGPT_API_KEY=${NANOGPT_API_KEY}
       - NANOGPT_MODEL=${NANOGPT_MODEL:-moonshotai/Kimi-K2-Instruct-0905}
@@ -75,7 +75,7 @@ services:
       - USER_ID=${USER_ID:-demo-user}
       - DEFAULT_PROJECT=${DEFAULT_PROJECT:-Default Project}
     volumes:
-      - mypalclara-data:/data
+      - mypalclarissa-data:/data
       - ./inputs/user_profile.txt:/app/inputs/user_profile.txt:ro
       - ./${BOT_PERSONALITY_FILE:-personality.txt}:/app/${BOT_PERSONALITY_FILE:-personality.txt}:ro
     depends_on:
@@ -92,11 +92,11 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${REGISTRY:-}mypalclara-frontend:latest
+    image: ${REGISTRY:-}mypalclarissa-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mypalclara-frontend
+    container_name: mypalclarissa-frontend
     profiles:
       - frontend
       - full
@@ -109,7 +109,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-anthropic/claude-sonnet-4}
       - OPENROUTER_SITE=${OPENROUTER_SITE:-http://localhost:3000}
-      - OPENROUTER_TITLE=${OPENROUTER_TITLE:-MyPalClara}
+      - OPENROUTER_TITLE=${OPENROUTER_TITLE:-MyPalClarissa}
       # NanoGPT (when LLM_PROVIDER=nanogpt)
       - NANOGPT_API_KEY=${NANOGPT_API_KEY}
       - NANOGPT_MODEL=${NANOGPT_MODEL:-moonshotai/Kimi-K2-Instruct-0905}
@@ -130,11 +130,11 @@ services:
 
   # Discord bot (optional - run with: docker-compose --profile discord up)
   discord-bot:
-    image: ${REGISTRY:-}mypalclara-discord:latest
+    image: ${REGISTRY:-}mypalclarissa-discord:latest
     build:
       context: .
       dockerfile: Dockerfile.discord
-    container_name: mypalclara-discord
+    container_name: mypalclarissa-discord
     profiles:
       - discord
     ports:
@@ -149,7 +149,7 @@ services:
       - DISCORD_ALLOWED_ROLES=${DISCORD_ALLOWED_ROLES:-}
       - DISCORD_MAX_MESSAGES=${DISCORD_MAX_MESSAGES:-25}
       # Bot personality
-      - BOT_NAME=${BOT_NAME:-Clara}
+      - BOT_NAME=${BOT_NAME:-Clarissa}
       - BOT_PERSONALITY_FILE=${BOT_PERSONALITY_FILE:-personality.txt}
       # Organic responses
       - ORGANIC_RESPONSE_ENABLED=${ORGANIC_RESPONSE_ENABLED:-false}
@@ -192,10 +192,10 @@ services:
       - DISCORD_MONITOR_PORT=8001
       - DISCORD_MONITOR_ENABLED=${DISCORD_MONITOR_ENABLED:-true}
       # Email (optional)
-      - CLARA_EMAIL_ADDRESS=${CLARA_EMAIL_ADDRESS:-}
-      - CLARA_EMAIL_PASSWORD=${CLARA_EMAIL_PASSWORD:-}
-      - CLARA_EMAIL_NOTIFY_USER=${CLARA_EMAIL_NOTIFY_USER:-}
-      - CLARA_EMAIL_NOTIFY=${CLARA_EMAIL_NOTIFY:-false}
+      - CLARISSA_EMAIL_ADDRESS=${CLARISSA_EMAIL_ADDRESS:-}
+      - CLARISSA_EMAIL_PASSWORD=${CLARISSA_EMAIL_PASSWORD:-}
+      - CLARISSA_EMAIL_NOTIFY_USER=${CLARISSA_EMAIL_NOTIFY_USER:-}
+      - CLARISSA_EMAIL_NOTIFY=${CLARISSA_EMAIL_NOTIFY:-false}
       # API URL for dashboard cross-service stats (optional)
       - API_URL=http://backend:8000
       # Graph memory (optional)
@@ -228,8 +228,8 @@ services:
       - SKIP_PROFILE_LOAD=true
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      - mypalclara-data:/data
-      - mypalclara-files:/app/clara_files
+      - mypalclarissa-data:/data
+      - mypalclarissa-files:/app/clarissa_files
       - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock  # For Docker sandbox
       - ./inputs/user_profile.txt:/app/inputs/user_profile.txt:ro
       - ./${BOT_PERSONALITY_FILE:-personality.txt}:/app/${BOT_PERSONALITY_FILE:-personality.txt}:ro
@@ -241,11 +241,11 @@ services:
     restart: unless-stopped
 
 volumes:
-  mypalclara-data:
-  mypalclara-files:
+  mypalclarissa-data:
+  mypalclarissa-files:
   postgres-data:
   postgres-vectors-data:
 
 networks:
   default:
-    name: mypalclara-network
+    name: mypalclarissa-network

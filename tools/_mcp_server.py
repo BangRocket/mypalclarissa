@@ -1,6 +1,6 @@
 """MCP (Model Context Protocol) server integration.
 
-Exposes Clara's tools via the MCP protocol for use with Claude Desktop,
+Exposes Clarissa's tools via the MCP protocol for use with Claude Desktop,
 other MCP clients, or any MCP-compatible AI application.
 """
 
@@ -22,20 +22,20 @@ except ImportError:
     FastMCP = None
 
 
-class ClaraMCPServer:
-    """MCP server that exposes Clara's tools.
+class ClarissaMCPServer:
+    """MCP server that exposes Clarissa's tools.
 
     Uses FastMCP to provide a simple interface for exposing tools
     via the Model Context Protocol.
 
     Usage:
-        server = ClaraMCPServer(registry)
+        server = ClarissaMCPServer(registry)
         await server.run_stdio()  # For Claude Desktop
         # or
         await server.run_http(port=8002)  # For HTTP access
     """
 
-    def __init__(self, registry: ToolRegistry, name: str = "clara-tools"):
+    def __init__(self, registry: ToolRegistry, name: str = "clarissa-tools"):
         """Initialize the MCP server.
 
         Args:

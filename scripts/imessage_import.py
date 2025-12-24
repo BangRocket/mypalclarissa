@@ -1,5 +1,5 @@
 """
-iMessage Import Tool for MyPalClara
+iMessage Import Tool for MyPalClarissa
 
 Imports text message conversations from macOS iMessage database into mem0
 for building relationship context with specific contacts.
@@ -321,7 +321,7 @@ def import_to_mem0(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Import iMessage conversations into mem0 for MyPalClara",
+        description="Import iMessage conversations into mem0 for MyPalClarissa",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

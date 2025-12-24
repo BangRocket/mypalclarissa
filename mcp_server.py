@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Clara MCP Server - Expose Clara's tools via Model Context Protocol.
+Clarissa MCP Server - Expose Clarissa's tools via Model Context Protocol.
 
-This server exposes Clara's tool system (code execution, file management,
+This server exposes Clarissa's tool system (code execution, file management,
 web search, etc.) via the MCP protocol for use with Claude Desktop or
 other MCP-compatible applications.
 
@@ -22,7 +22,7 @@ Claude Desktop Configuration:
         "mcpServers": {
             "clara": {
                 "command": "python",
-                "args": ["/path/to/mypalclara/mcp_server.py"]
+                "args": ["/path/to/mypalclarissa/mcp_server.py"]
             }
         }
     }
@@ -42,7 +42,7 @@ import sys
 async def main() -> None:
     """Main entry point for the MCP server."""
     parser = argparse.ArgumentParser(
-        description="Clara MCP Server - Expose tools via Model Context Protocol"
+        description="Clarissa MCP Server - Expose tools via Model Context Protocol"
     )
     parser.add_argument(
         "--sse",
@@ -69,7 +69,7 @@ async def main() -> None:
 
     # Import tools system
     from tools import get_loader, get_registry, init_tools
-    from tools._mcp_server import ClaraMCPServer, is_mcp_available
+    from tools._mcp_server import ClarissaMCPServer, is_mcp_available
 
     if not is_mcp_available():
         print("Error: MCP package not installed.", file=sys.stderr)
@@ -89,7 +89,7 @@ async def main() -> None:
 
     # Create and run MCP server
     registry = get_registry()
-    server = ClaraMCPServer(registry)
+    server = ClarissaMCPServer(registry)
 
     try:
         if args.sse:

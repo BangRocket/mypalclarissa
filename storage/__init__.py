@@ -1,4 +1,4 @@
-"""Storage backends for Clara.
+"""Storage backends for Clarissa.
 
 Provides local and cloud file storage.
 """

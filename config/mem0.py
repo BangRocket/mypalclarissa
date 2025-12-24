@@ -294,7 +294,7 @@ if MEM0_DATABASE_URL:
         "provider": "pgvector",
         "config": {
             "connection_string": pgvector_url,
-            "collection_name": "clara_memories",
+            "collection_name": "clarissa_memories",
         },
     }
     print(f"[mem0] Vector store: pgvector at {pgvector_url.split('@')[1] if '@' in pgvector_url else 'configured'}")
@@ -303,7 +303,7 @@ else:
     vector_store_config = {
         "provider": "qdrant",
         "config": {
-            "collection_name": "mypalclara_memories",
+            "collection_name": "mypalclarissa_memories",
             "path": str(QDRANT_DATA_DIR),
         },
     }

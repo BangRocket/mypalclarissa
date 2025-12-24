@@ -1,6 +1,6 @@
 """Local file storage tools.
 
-Provides managed storage for Clara to save and retrieve files.
+Provides managed storage for Clarissa to save and retrieve files.
 Tools: save_to_local, list_local_files, read_local_file, delete_local_file,
        download_from_sandbox, upload_to_sandbox, send_local_file,
        create_file_attachment

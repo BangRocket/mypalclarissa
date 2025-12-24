@@ -188,7 +188,7 @@ export function MemoryManager({
             Memory Manager
           </DialogTitle>
           <DialogDescription>
-            View, edit, and delete memories stored by Clara
+            View, edit, and delete memories stored by Clarissa
           </DialogDescription>
         </DialogHeader>
 
