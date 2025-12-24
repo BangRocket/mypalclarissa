@@ -281,3 +281,14 @@ docker-compose --profile discord --profile postgres up
 ```bash
 poetry run python scripts/migrate_to_postgres.py --all
 ```
+
+### Railway Deployment
+
+See [RAILWAY.md](./RAILWAY.md) for detailed Railway deployment instructions.
+
+Quick setup:
+1. Create Railway project and link GitHub repo
+2. Add two PostgreSQL databases (one with pgvector)
+3. Deploy backend from root directory
+4. Deploy frontend from `frontend/` directory
+5. Configure environment variables using Railway's service references

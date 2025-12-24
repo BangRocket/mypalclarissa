@@ -1,0 +1,11 @@
+# Railway configuration for MyPalClarissa Discord Bot
+# Use this when deploying the Discord bot as a separate service
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.discord"
+
+[deploy]
+# Discord bot is a worker, no HTTP health check needed
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5

@@ -47,11 +47,12 @@ USER nextjs
 
 EXPOSE 3000
 
-ENV PORT=3000
+# Railway sets PORT automatically, default to 3000 for local
+ENV PORT=${PORT:-3000}
 ENV HOSTNAME="0.0.0.0"
 
-# Health check
+# Health check - use PORT env var
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/ || exit 1
 
 CMD ["node", "server.js"]

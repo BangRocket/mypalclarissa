@@ -40,12 +40,12 @@ COPY inputs/user_profile.tx[t] ./inputs/
 RUN mkdir -p /data
 ENV DATA_DIR=/data
 
-# Expose port
+# Expose port (Railway sets PORT env var automatically)
 EXPOSE 8000
 
-# Health check
+# Health check - use PORT env var if set, otherwise 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Run the API
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the API - Railway sets PORT automatically
+CMD uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}
